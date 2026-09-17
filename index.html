@@ -889,8 +889,16 @@
       td.addEventListener('click', () => goToPly(parseInt(td.dataset.ply, 10)));
     });
     const activeRow = historyEl.querySelector('.ply.active');
-    if(activeRow) activeRow.scrollIntoView({ block:'nearest' });
-    else historyEl.scrollTop = historyEl.scrollHeight;
+    if(activeRow){
+      // Only scroll the history pane, never the page. scrollIntoView() bubbles
+      // to window and pulls the viewport down to the moves card on every ply.
+      const rowTop = activeRow.offsetTop;
+      const rowBottom = rowTop + activeRow.offsetHeight;
+      const viewTop = historyEl.scrollTop;
+      const viewBottom = viewTop + historyEl.clientHeight;
+      if(rowTop < viewTop) historyEl.scrollTop = rowTop;
+      else if(rowBottom > viewBottom) historyEl.scrollTop = rowBottom - historyEl.clientHeight;
+    } else historyEl.scrollTop = historyEl.scrollHeight;
   }
 
   function goToPly(ply){
