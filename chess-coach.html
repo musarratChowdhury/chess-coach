@@ -1,0 +1,1118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Chess Coach</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/chess.js/0.10.3/chess.min.js"></script>
+<style>
+  :root{
+    --bg:#f4f1ea;
+    --panel-bg:#ffffff;
+    --text:#242220;
+    --text-dim:#6b6560;
+    --border:#ded7cb;
+    --accent:#8a5a44;
+    --accent-2:#3f6e5b;
+    --light-sq:#eee3cf;
+    --dark-sq:#9c7256;
+    --select-sq: rgba(255,214,102,0.65);
+    --last-move: rgba(96,150,220,0.4);
+    --move-dot: rgba(60,60,60,0.35);
+    --capture-ring: rgba(200,60,60,0.55);
+    --danger:#b0432f;
+    --shadow: 0 6px 24px rgba(0,0,0,0.12);
+    font-family: 'Georgia', 'Iowan Old Style', serif;
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --bg:#1b1a18;
+      --panel-bg:#252320;
+      --text:#ece7de;
+      --text-dim:#a69d92;
+      --border:#3a352f;
+      --accent:#d68f6f;
+      --accent-2:#7fbfa1;
+      --light-sq:#c9a877;
+      --dark-sq:#6e4a34;
+      --select-sq: rgba(255,214,102,0.55);
+      --last-move: rgba(120,170,230,0.4);
+      --move-dot: rgba(255,255,255,0.4);
+      --capture-ring: rgba(230,90,90,0.7);
+      --shadow: 0 6px 24px rgba(0,0,0,0.4);
+    }
+  }
+  :root[data-theme="dark"]{
+    --bg:#1b1a18;
+    --panel-bg:#252320;
+    --text:#ece7de;
+    --text-dim:#a69d92;
+    --border:#3a352f;
+    --accent:#d68f6f;
+    --accent-2:#7fbfa1;
+    --light-sq:#c9a877;
+    --dark-sq:#6e4a34;
+    --select-sq: rgba(255,214,102,0.55);
+    --last-move: rgba(120,170,230,0.4);
+    --move-dot: rgba(255,255,255,0.4);
+    --capture-ring: rgba(230,90,90,0.7);
+    --shadow: 0 6px 24px rgba(0,0,0,0.4);
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    background:var(--bg);
+    color:var(--text);
+    min-height:100vh;
+    padding:24px 16px 48px;
+  }
+  h1{
+    text-align:center;
+    font-size:1.7rem;
+    letter-spacing:0.02em;
+    margin:0 0 4px;
+    font-weight:600;
+  }
+  .subtitle{
+    text-align:center;
+    color:var(--text-dim);
+    font-size:0.92rem;
+    margin:0 0 28px;
+  }
+  .layout{
+    display:flex;
+    flex-wrap:wrap;
+    gap:28px;
+    justify-content:center;
+    align-items:flex-start;
+    max-width:980px;
+    margin:0 auto;
+  }
+  .board-wrap{
+    position:relative;
+    flex:0 0 auto;
+  }
+  #board{
+    display:grid;
+    grid-template-columns:repeat(8,min(11vw,58px));
+    grid-template-rows:repeat(8,min(11vw,58px));
+    border:5px solid var(--accent);
+    border-radius:6px;
+    overflow:hidden;
+    box-shadow:var(--shadow);
+    user-select:none;
+  }
+  .sq{
+    position:relative;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    font-size:min(7vw,38px);
+    cursor:pointer;
+    line-height:1;
+    touch-action:none;
+  }
+  .sq .piece.dragging{ opacity:0; }
+  .drag-ghost{
+    position:fixed;
+    top:0; left:0;
+    pointer-events:none;
+    z-index:999;
+    transform:translate(-50%,-50%);
+    filter:drop-shadow(0 3px 6px rgba(0,0,0,0.45));
+    line-height:1;
+  }
+  .sq.light{ background:var(--light-sq); }
+  .sq.dark{ background:var(--dark-sq); }
+  .sq.last-from::before, .sq.last-to::before{
+    content:"";
+    position:absolute; inset:0;
+    background:var(--last-move);
+  }
+  .sq.selected::after{
+    content:"";
+    position:absolute; inset:0;
+    background:var(--select-sq);
+  }
+  .sq .piece{ position:relative; z-index:2; filter:drop-shadow(0 1px 1px rgba(0,0,0,0.35)); pointer-events:none; }
+  .sq .dot{
+    position:absolute; width:26%; height:26%; border-radius:50%;
+    background:var(--move-dot); z-index:1; pointer-events:none;
+  }
+  .sq .ring{
+    position:absolute; inset:6%; border-radius:50%;
+    border:4px solid var(--capture-ring); z-index:1; pointer-events:none;
+  }
+  .sq .coord{
+    position:absolute; bottom:1px; right:3px; font-size:9px; opacity:0.55; z-index:1; pointer-events:none;
+    font-family: monospace;
+  }
+  #arrowSvg{ position:absolute; top:0; left:0; width:100%; height:100%; pointer-events:none; z-index:5; }
+  .panel{
+    width:300px;
+    max-width:90vw;
+    display:flex;
+    flex-direction:column;
+    gap:14px;
+  }
+  .card{
+    background:var(--panel-bg);
+    border:1px solid var(--border);
+    border-radius:10px;
+    padding:14px 16px;
+    box-shadow:var(--shadow);
+  }
+  .status{
+    font-size:1rem;
+    font-weight:600;
+    min-height:1.3em;
+  }
+  .status.check{ color:var(--danger); }
+  .row{ display:flex; gap:8px; flex-wrap:wrap; }
+  button, select{
+    font-family:inherit;
+    font-size:0.88rem;
+    padding:8px 12px;
+    border-radius:7px;
+    border:1px solid var(--border);
+    background:var(--bg);
+    color:var(--text);
+    cursor:pointer;
+  }
+  button.primary{
+    background:var(--accent);
+    border-color:var(--accent);
+    color:#fff;
+    font-weight:600;
+  }
+  button:disabled{ opacity:0.5; cursor:default; }
+  button:hover:not(:disabled){ filter:brightness(1.06); }
+  label{ font-size:0.82rem; color:var(--text-dim); display:block; margin-bottom:4px;}
+  .hint-box{
+    font-size:0.9rem;
+    line-height:1.4;
+    min-height:1.4em;
+  }
+  .hint-move{ color:var(--accent-2); font-weight:700; }
+  .history{
+    max-height:190px;
+    overflow-y:auto;
+    font-size:0.86rem;
+    line-height:1.6;
+  }
+  .history table{ width:100%; border-collapse:collapse; }
+  .history td{ padding:2px 4px; cursor:pointer; border-radius:4px; }
+  .history td:first-child{ color:var(--text-dim); width:2em; cursor:default; }
+  .history td.ply.active{ background:var(--accent); color:#fff; font-weight:700; }
+  .nav-row{ display:flex; gap:6px; margin-bottom:10px; }
+  .nav-row button{ flex:1; padding:6px 4px; font-size:0.95rem; }
+  .view-banner{
+    display:flex; align-items:center; justify-content:space-between; gap:8px;
+    background:var(--last-move); border:1px solid var(--accent-2);
+    border-radius:8px; padding:8px 10px; font-size:0.85rem; margin-bottom:10px;
+  }
+  .view-banner button{ padding:5px 10px; font-size:0.8rem; white-space:nowrap; }
+  .promo-overlay{
+    position:fixed; inset:0; background:rgba(0,0,0,0.45);
+    display:flex; align-items:center; justify-content:center; z-index:50;
+  }
+  .promo-card{
+    background:var(--panel-bg); border-radius:10px; padding:18px 20px;
+    display:flex; gap:10px; box-shadow:var(--shadow);
+  }
+  .promo-card button{ font-size:1.8rem; padding:8px 14px; }
+  .mode-toggle{ display:flex; gap:8px; justify-content:center; margin-bottom:18px; }
+  .mode-toggle button{ padding:8px 18px; font-size:0.9rem; border-radius:20px; }
+  .mode-toggle button.active{ background:var(--accent); border-color:var(--accent); color:#fff; font-weight:600; }
+  .puzzle-only{ display:none; }
+  body.mode-puzzle .puzzle-only{ display:block; }
+  body.mode-puzzle .play-only{ display:none; }
+  .puzzle-info{ font-size:0.88rem; color:var(--text-dim); margin-bottom:8px; line-height:1.4; }
+  .hint-box.good{ color:var(--accent-2); font-weight:700; }
+  .hint-box.bad{ color:var(--danger); font-weight:700; }
+  .diff-row{ display:flex; gap:8px; align-items:center; margin-bottom:10px; }
+  .diff-row select{ flex:1; }
+  .hidden{ display:none !important; }
+  .footer-note{ font-size:0.78rem; color:var(--text-dim); text-align:center; margin-top:6px;}
+</style>
+</head>
+<body>
+
+<h1>♟ Chess Coach</h1>
+<p class="subtitle">Play a game, and tap <b>Get Hint</b> whenever you want a suggestion.</p>
+
+<div class="mode-toggle">
+  <button id="modePlayBtn" class="active">▶ Play</button>
+  <button id="modePuzzleBtn">🧩 Puzzles</button>
+</div>
+
+
+<div class="layout">
+  <div class="board-wrap">
+    <div id="board"></div>
+    <svg id="arrowSvg"></svg>
+  </div>
+
+  <div class="panel">
+    <div class="card">
+      <div class="status" id="status">White to move</div>
+    </div>
+
+    <div class="card">
+      <div class="row" style="margin-bottom:10px;">
+        <button class="primary" id="hintBtn">💡 Get Hint</button>
+        <button id="clearHintBtn">Clear</button>
+      </div>
+      <div class="hint-box" id="hintBox">No hint yet — press "Get Hint".</div>
+    </div>
+
+    <div class="card puzzle-only">
+      <label>Puzzle</label>
+      <div class="diff-row">
+        <select id="puzzleDiff">
+          <option value="any">Any difficulty</option>
+          <option value="easy">Easy (≤1100)</option>
+          <option value="medium">Medium (1100–1500)</option>
+          <option value="hard">Hard (1500–1900)</option>
+          <option value="expert">Expert (1900+)</option>
+        </select>
+        <button id="newPuzzleBtn" class="primary">New Puzzle</button>
+      </div>
+      <div class="puzzle-info" id="puzzleInfo">Loading…</div>
+      <div class="hint-box" id="puzzleFeedback"></div>
+      <div class="row" style="margin-top:10px;">
+        <button id="revealSolutionBtn">Show Solution</button>
+        <button id="skipPuzzleBtn">Skip</button>
+      </div>
+    </div>
+
+    <div class="card play-only">
+      <label>Opponent</label>
+      <select id="aiSelect">
+        <option value="none">Two players (no AI)</option>
+        <option value="b">AI plays Black</option>
+        <option value="w">AI plays White</option>
+      </select>
+      <div id="diffRow" style="margin-top:8px;">
+        <label>Difficulty</label>
+        <select id="diffSelect">
+          <option value="1">Easy</option>
+          <option value="2" selected>Medium</option>
+          <option value="3">Hard</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="row">
+        <button id="newBtn" class="play-only">New Game</button>
+        <button id="undoBtn" class="play-only">Undo</button>
+        <button id="flipBtn">Flip Board</button>
+      </div>
+    </div>
+
+    <div class="card play-only">
+      <label>Moves</label>
+      <div class="nav-row">
+        <button id="navStart" title="First position">⏮</button>
+        <button id="navBack" title="Previous move">◀</button>
+        <button id="navForward" title="Next move">▶</button>
+        <button id="navLive" title="Latest position">⏭</button>
+      </div>
+      <div class="view-banner hidden" id="viewBanner">
+        <span id="viewBannerText">Viewing move 0</span>
+        <button id="returnLiveBtn">Return to live</button>
+      </div>
+      <div class="history" id="history"></div>
+    </div>
+  </div>
+</div>
+<p class="footer-note">Hints come from a small on-device engine — a helpful nudge, not a perfect oracle.</p>
+
+<div class="promo-overlay hidden" id="promoOverlay">
+  <div class="promo-card" id="promoCard"></div>
+</div>
+
+<script>
+(function(){
+  const game = new Chess();
+  const boardEl = document.getElementById('board');
+  const statusEl = document.getElementById('status');
+  const historyEl = document.getElementById('history');
+  const hintBox = document.getElementById('hintBox');
+  const arrowSvg = document.getElementById('arrowSvg');
+  const aiSelect = document.getElementById('aiSelect');
+  const diffSelect = document.getElementById('diffSelect');
+  const diffRow = document.getElementById('diffRow');
+  const promoOverlay = document.getElementById('promoOverlay');
+  const promoCard = document.getElementById('promoCard');
+
+  // Curated batch of real Lichess puzzles (FEN reconstructed & solution-verified offline),
+  // spread across four difficulty tiers. id/rating/themes come straight from the Lichess
+  // puzzle database (CC0); fen/solution were derived by replaying each puzzle's opening move.
+  const PUZZLES = [{"id":"cayPa","rating":1157,"themes":["cornerMate","mate","mateIn1","middlegame","oneMove"],"fen":"2k5/p1q2pr1/n1N5/1p1Q4/1P2P2p/2P2N1n/5P2/3R3K b - - 2 31","playerColor":"b","solution":["h3f2"]},{"id":"YccaA","rating":1119,"themes":["endgame","mate","mateIn2","short"],"fen":"1r4k1/pr3pp1/2p1p3/4q3/7Q/1P1R3P/P2R1PP1/6K1 w - - 0 39","playerColor":"w","solution":["d3d8","b8d8","d2d8"]},{"id":"Teg4k","rating":2231,"themes":["middlegame"],"fen":"r3kb1r/ppp1qp2/4pn1p/6pb/3n4/2NB1NBP/PPP1QPP1/1K1R3R w kq - 2 13","playerColor":"w","solution":["d3b5","d4b5","c3b5"]},{"id":"9h3yk","rating":1358,"themes":["advantage","exposedKing","long","middlegame"],"fen":"8/4q1kP/3pP3/2r5/1p2B3/1Pb1Pr1P/6P1/2R2RK1 w - - 1 35","playerColor":"w","solution":["f1f3","e7e6","f3g3","g7h8","g3g8"]},{"id":"5EaCf","rating":1512,"themes":["endgame","mate","mateIn2","short"],"fen":"2k5/pbp2p2/1p2pP2/4P3/3K1P2/1PP3r1/P7/3R1R2 b - - 0 28","playerColor":"b","solution":["c7c5","d4c4","b7a6"]},{"id":"pgDa8","rating":1911,"themes":["kingsideAttack","mate","mateIn2","opening","sacrifice","short"],"fen":"r1bqnr1k/ppp3bP/3p4/6N1/3Pn1p1/1Q2P3/PP3PP1/R3KB1R w KQ - 0 16","playerColor":"w","solution":["b3g8","f8g8","g5f7"]},{"id":"yVDRG","rating":2387,"themes":["crushing","defensiveMove","endgame","long","rookEndgame"],"fen":"8/8/1K3r2/1P4k1/P7/8/8/8 w - - 1 64","playerColor":"w","solution":["b6a7","f6f5","a7a6","g5f4","b5b6"]},{"id":"BEQf9","rating":1341,"themes":["fork","mate","mateIn2","middlegame","short"],"fen":"2N2r2/pp3ppk/3p3p/6n1/4P1q1/1PP3P1/1P1Q1PK1/3RR3 b - - 0 26","playerColor":"b","solution":["g4h3","g2g1","g5f3"]},{"id":"LPEjd","rating":1105,"themes":["advantage","endgame","fork","hangingPiece","short"],"fen":"5B2/6pk/7p/1p1pP3/4p1QP/8/5qP1/5B1K b - - 3 40","playerColor":"b","solution":["f2f1","h1h2","f1f8"]},{"id":"k4stQ","rating":819,"themes":["mate","mateIn1","middlegame","oneMove"],"fen":"3r1bkr/p3n1pp/4n3/7Q/1P6/2qN2B1/6PP/1K3R2 w - - 0 29","playerColor":"w","solution":["h5f7"]},{"id":"Z8Jml","rating":884,"themes":["mate","mateIn1","middlegame","oneMove"],"fen":"r1bq1rk1/ppp1pp2/3p4/4b3/3n3Q/2NB3P/PPP2PP1/R4RK1 w - - 0 14","playerColor":"w","solution":["h4h7"]},{"id":"Hl6L2","rating":613,"themes":["kingsideAttack","mate","mateIn1","middlegame","oneMove"],"fen":"r3r1k1/pp2qppp/1bnp4/3b4/1P6/P1Q1PN2/1B1P1PPP/R3K2R w KQ - 0 16","playerColor":"w","solution":["c3g7"]},{"id":"DPci2","rating":1176,"themes":["endgame","mate","mateIn2","short"],"fen":"8/2Q2b2/1P2k3/4P2p/4q2P/6K1/3p4/8 w - - 20 64","playerColor":"w","solution":["c7d6","e6f5","d6f6"]},{"id":"Jf91m","rating":1531,"themes":["endgame","equality","oneMove"],"fen":"1r6/3kq3/4p3/p1pp4/8/2Q4P/b4PP1/4R1K1 w - - 0 35","playerColor":"w","solution":["c3a5"]},{"id":"qilvi","rating":1827,"themes":["crushing","deflection","endgame","long"],"fen":"8/p6p/1p4pk/8/2pRQ1Pn/6KP/PP3P2/5q2 b - - 4 38","playerColor":"b","solution":["f1g1","g3f4","g1f2","f4e5","h4f3"]},{"id":"Fy0V6","rating":2515,"themes":["advantage","defensiveMove","hangingPiece","long","middlegame"],"fen":"2r5/6pk/QRn1p3/2p1p2p/4P3/2PP1rqP/5NP1/5R1K w - - 0 38","playerColor":"w","solution":["a6c8","f3f2","f1f2","g3f2","b6b1"]},{"id":"XJ7GR","rating":1631,"themes":["endgame","mate","mateIn1","oneMove"],"fen":"5k2/pp3p2/N4Kp1/4r2p/8/5P2/PP4PP/R7 b - - 1 30","playerColor":"b","solution":["e5f5"]},{"id":"6b6F7","rating":1610,"themes":["equality","intermezzo","middlegame","short"],"fen":"2r3k1/3q1pb1/6p1/2Q3Pp/4p2P/4P3/1N1PN3/2R1KR2 b - - 0 31","playerColor":"b","solution":["c8c5","c1c5","g7b2"]},{"id":"sMznI","rating":967,"themes":["kingsideAttack","mate","mateIn1","middlegame","oneMove"],"fen":"r4rk1/pb1n1Npp/1p1pB1q1/5n2/3P1P2/2P5/P1P3PP/R1BQR1K1 b - - 0 14","playerColor":"b","solution":["g6g2"]},{"id":"eIpnw","rating":1670,"themes":["master","middlegame"],"fen":"1r1b2k1/2p3pp/R2pp3/Pq3p2/2QP4/4P1BP/5PP1/1rR3K1 w - - 4 28","playerColor":"w","solution":["c4e6","g8h8","c1b1"]},{"id":"ccLDu","rating":1577,"themes":["advantage","opening","short"],"fen":"r1bq2r1/pp2k3/5N2/2ppb3/7Q/4P3/PPP2PPP/RN2KB1R b KQ - 0 16","playerColor":"b","solution":["e5f6","h4h7","g8g7"]},{"id":"fsaHN","rating":2260,"themes":["bishopEndgame","crushing","deflection","endgame","long"],"fen":"4k3/6pp/1pK1P3/2b2p1P/P7/2B5/8/8 w - - 4 50","playerColor":"w","solution":["a4a5","b6a5","c6c5","a5a4","c3g7"]},{"id":"a9L9w","rating":1158,"themes":["advancedPawn","crushing","endgame","rookEndgame","short"],"fen":"8/8/6k1/1R6/6Pp/1p1r1P1P/6K1/8 b - - 0 49","playerColor":"b","solution":["d3d2","g2f1","b3b2"]},{"id":"pRgDY","rating":1973,"themes":["endgame","equality","hangingPiece","short"],"fen":"8/6pk/7p/7n/6P1/5K2/8/8 w - - 0 66","playerColor":"w","solution":["g4h5","g7g6","h5g6"]},{"id":"lQII8","rating":929,"themes":["advantage","discoveredAttack","endgame","long"],"fen":"3r4/1p1bkp1p/3R1p2/4p3/2P5/8/PP3PPP/1K1R4 b - c3 0 25","playerColor":"b","solution":["d7f5","b1c1","d8d6","d1d6","e7d6"]},{"id":"XR3o0","rating":866,"themes":["backRankMate","mate","mateIn2","middlegame","sacrifice","short"],"fen":"r3r1k1/1R3pp1/p3q2p/3B4/P1P3b1/8/2Q2PPP/R5K1 b - - 2 23","playerColor":"b","solution":["e6e1","a1e1","e8e1"]},{"id":"oGOX3","rating":937,"themes":["endgame","mate","mateIn1","oneMove"],"fen":"3r3k/R6p/8/5Qq1/8/7P/P1r3P1/5R1K b - - 0 37","playerColor":"b","solution":["g5g2"]},{"id":"MnVCN","rating":855,"themes":["mate","mateIn1","middlegame","oneMove"],"fen":"r5k1/pp1q1p1p/2nprQpB/3pP3/3P4/8/PPP3PP/5RK1 w - - 2 21","playerColor":"w","solution":["f6g7"]},{"id":"T5kr0","rating":2285,"themes":["advantage","middlegame","short"],"fen":"r1b1r1k1/3p1p1p/pp1B1Qp1/4b3/PP6/2qB4/2P2PPP/R3R1K1 b - - 1 18","playerColor":"b","solution":["c3a1","e1a1","e5f6"]},{"id":"WZAt9","rating":760,"themes":["endgame","mate","mateIn1","oneMove"],"fen":"5k2/1R3ppp/4p3/4P1B1/6rP/3KP1P1/5r2/8 w - - 0 38","playerColor":"w","solution":["b7b8"]},{"id":"uufpR","rating":1600,"themes":["advantage","master","middlegame","short"],"fen":"8/1pr2pkp/pN1Rn1pb/7q/2PpP3/P4P2/1P3BPP/3Q3K b - - 3 32","playerColor":"b","solution":["h6f4","f2g1","f4d6"]},{"id":"XADNm","rating":1645,"themes":["middlegame"],"fen":"1r3rk1/5ppp/1pp5/3p3q/p2P1N2/1Q2P1P1/PP2bPP1/R3R1K1 b - - 1 21","playerColor":"b","solution":["a4b3","f4h5","e2h5"]},{"id":"vQVNo","rating":1142,"themes":["advantage","discoveredAttack","middlegame","short"],"fen":"6k1/3b1pp1/2pp1n2/2p1r3/5N1P/1PqBQ2P/2P2PK1/4R3 w - - 0 29","playerColor":"w","solution":["d3h7","g8h7","e3c3"]},{"id":"elBYs","rating":1607,"themes":["advancedPawn","endgame","equality","pin","short"],"fen":"8/p4r2/2R5/7k/2P3p1/6p1/P4P2/4BK2 b - - 3 43","playerColor":"b","solution":["g3f2","e1f2","g4g3"]},{"id":"fCNQT","rating":2697,"themes":["advantage","middlegame","short"],"fen":"rnb2k1r/pp1p1p2/2pq3p/3N2p1/2B5/5Q2/PP3PPP/2K1R2n w - - 0 16","playerColor":"w","solution":["f3c3","h8g8","d5f6"]},{"id":"qx8Lc","rating":1339,"themes":["kingsideAttack","mate","mateIn2","middlegame","short"],"fen":"r3r1k1/1pp1q3/1p1pb1pQ/4p1P1/4P3/P2P4/1PP2PP1/R3K2R w KQ - 0 19","playerColor":"w","solution":["h6h8","g8f7","h1h7"]},{"id":"GgyNE","rating":2207,"themes":["advantage","middlegame","short"],"fen":"2r1r3/pp4kp/4b1p1/4qpP1/3R3P/NP2P3/P2QB3/2R1K3 b - - 2 24","playerColor":"b","solution":["e5g3","e1f1","f5f4"]},{"id":"E2NVj","rating":1604,"themes":["crushing","endgame","long"],"fen":"8/2k5/3R4/p7/2N3K1/1P1p4/P7/2r5 b - - 1 53","playerColor":"b","solution":["c1c4","g4f3","c7d6","b3c4","d6c5"]},{"id":"wEFXv","rating":1646,"themes":["endgame","mate","mateIn2","short"],"fen":"4Q3/2k5/4p3/2bp4/2p3Pp/2q5/4B1K1/5R2 b - - 1 44","playerColor":"b","solution":["c3g3","g2h1","g3h3"]},{"id":"ujrBG","rating":945,"themes":["endgame","mate","mateIn2","short"],"fen":"2N4k/p5pp/1p2r3/2bR4/5P2/6P1/P5P1/5R1K b - - 0 28","playerColor":"b","solution":["e6h6","d5h5","h6h5"]},{"id":"40L96","rating":1911,"themes":["crushing","endgame","long","master","queensideAttack"],"fen":"5rk1/4Rp1p/3p1Qp1/q2P4/6P1/1P1bRP2/1P5P/2K5 b - - 0 27","playerColor":"b","solution":["f8c8","c1d1","a5a1","d1d2","a1c1"]},{"id":"qz2d8","rating":604,"themes":["mate","mateIn1","middlegame","oneMove"],"fen":"R3B1nr/ppp1k1pp/3p4/4p3/4P2q/2P5/PPQ3PP/RNB3K1 b - - 0 15","playerColor":"b","solution":["h4e1"]},{"id":"4tUUj","rating":1371,"themes":["endgame"],"fen":"4r1k1/p5pp/5Q2/8/8/4PP1q/P4K2/6R1 b - - 0 32","playerColor":"b","solution":["h3h2","g1g2","h2g2","f2g2","g7f6"]},{"id":"Vq4RM","rating":1267,"themes":["advantage","endgame","long"],"fen":"2rr2k1/5p1p/p5pQ/8/3p4/7R/6PP/1qB3K1 w - - 2 33","playerColor":"w","solution":["h6h7","g8f8","h7h8","f8e7","h8e5"]},{"id":"SxrFb","rating":1061,"themes":["mate","mateIn2","middlegame","queensideAttack","short"],"fen":"5rk1/4Q2p/6pP/4p1P1/3pN3/4n3/qPPN3r/2K1R1R1 b - - 0 26","playerColor":"b","solution":["a2a1","d2b1","h2c2"]},{"id":"5ikyc","rating":2064,"themes":["crushing","endgame","exposedKing","long","queenRookEndgame"],"fen":"r7/pk6/2p5/3r4/1P6/Q6P/P7/6K1 b - - 2 35","playerColor":"b","solution":["a8g8","g1f2","d5f5","f2e2","g8e8"]},{"id":"RKIPQ","rating":1296,"themes":["advantage","endgame","fork","short"],"fen":"8/5B2/1p1bn1pk/2p2b2/2P5/2B2K2/1P6/3R4 b - - 1 46","playerColor":"b","solution":["e6g5","f3f2","g5f7"]},{"id":"IPUuJ","rating":2104,"themes":["endgame","equality","short"],"fen":"8/6B1/8/1R2p2p/3k2pP/6K1/rp3P2/8 b - - 5 51","playerColor":"b","solution":["d4c4","b5b2","a2b2"]}];
+
+  let mode = 'play'; // 'play' | 'puzzle'
+  let currentPuzzle = null;
+  let puzzleSolutionIndex = 0;
+  let puzzleLastMove = null;   // {from,to}
+  let puzzleSolved = false;
+  let puzzleTimer = null;
+  let puzzleGeneration = 0;
+  let savedPlayState = null;
+
+  let flipped = false;
+  let selected = null;      // currently selected square
+  let legalTargets = [];    // verbose moves from selected square
+  let lastHint = null;      // {from,to}
+  let pendingPromotion = null; // {from,to}
+
+  // Position history for the back/forward navigator.
+  // posFens[0] is the starting position; posFens[i] is the position after posMoves[i-1].
+  let posFens = [game.fen()];
+  let posMoves = [];        // verbose move objects, one per ply played
+  let viewIndex = 0;        // which position is currently displayed
+
+  function isLive(){ return viewIndex === posFens.length - 1; }
+
+  function boardInteractive(){
+    if(mode === 'puzzle') return !!currentPuzzle && !puzzleSolved;
+    return isLive();
+  }
+
+  function getDisplayGame(){
+    if(mode === 'puzzle') return game;
+    return isLive() ? game : new Chess(posFens[viewIndex]);
+  }
+
+  function recordMove(moveObj, fenAfter){
+    posMoves.push(moveObj);
+    posFens.push(fenAfter);
+    viewIndex = posFens.length - 1;
+  }
+
+  function resetHistoryTracking(){
+    posFens = [game.fen()];
+    posMoves = [];
+    viewIndex = 0;
+  }
+
+  const PIECE_UNICODE = {
+    wp:'♙', wn:'♘', wb:'♗', wr:'♖', wq:'♕', wk:'♔',
+    bp:'♟', bn:'♞', bb:'♝', br:'♜', bq:'♛', bk:'♚'
+  };
+  const PIECE_NAME = { p:'pawn', n:'knight', b:'bishop', r:'rook', q:'queen', k:'king' };
+
+  function files(){ return ['a','b','c','d','e','f','g','h']; }
+
+  function squareOrder(){
+    const f = files();
+    const ranks = flipped ? [1,2,3,4,5,6,7,8] : [8,7,6,5,4,3,2,1];
+    const fOrder = flipped ? f.slice().reverse() : f;
+    const squares = [];
+    for(const r of ranks){
+      for(const file of fOrder){
+        squares.push(file + r);
+      }
+    }
+    return squares;
+  }
+
+  function isLightSquare(square){
+    const file = square.charCodeAt(0) - 97;
+    const rank = parseInt(square[1],10);
+    return (file + rank) % 2 === 0;
+  }
+
+  function buildBoard(){
+    boardEl.innerHTML = '';
+    const squares = squareOrder();
+    squares.forEach(sq => {
+      const div = document.createElement('div');
+      div.className = 'sq ' + (isLightSquare(sq) ? 'light' : 'dark');
+      div.dataset.square = sq;
+      div.addEventListener('pointerdown', (e) => onSquarePointerDown(e, sq));
+      boardEl.appendChild(div);
+    });
+    renderPieces();
+  }
+
+  function renderPieces(){
+    const displayGame = getDisplayGame();
+    const lastMove = mode === 'puzzle' ? puzzleLastMove : (viewIndex > 0 ? posMoves[viewIndex - 1] : null);
+    const squares = boardEl.querySelectorAll('.sq');
+    squares.forEach(div => {
+      div.querySelectorAll('.piece,.dot,.ring,.coord').forEach(n => n.remove());
+      div.classList.remove('selected', 'last-from', 'last-to');
+      const sq = div.dataset.square;
+      const piece = displayGame.get(sq);
+      if(piece){
+        const span = document.createElement('span');
+        span.className = 'piece';
+        span.textContent = PIECE_UNICODE[piece.color + piece.type];
+        div.appendChild(span);
+      }
+      if(selected === sq){
+        div.classList.add('selected');
+      }
+      if(lastMove){
+        if(sq === lastMove.from) div.classList.add('last-from');
+        if(sq === lastMove.to) div.classList.add('last-to');
+      }
+      const target = legalTargets.find(m => m.to === sq);
+      if(target){
+        const marker = document.createElement('span');
+        marker.className = target.captured ? 'ring' : 'dot';
+        div.appendChild(marker);
+      }
+    });
+    drawHintArrow();
+    document.getElementById('hintBtn').disabled = !boardInteractive();
+  }
+
+  function squareCenter(sq){
+    const div = boardEl.querySelector('.sq[data-square="'+sq+'"]');
+    if(!div) return null;
+    const boardRect = boardEl.getBoundingClientRect();
+    const r = div.getBoundingClientRect();
+    return {
+      x: r.left - boardRect.left + r.width/2,
+      y: r.top - boardRect.top + r.height/2
+    };
+  }
+
+  function drawHintArrow(){
+    arrowSvg.innerHTML = '';
+    if(!lastHint || !boardInteractive()) return;
+    const from = squareCenter(lastHint.from);
+    const to = squareCenter(lastHint.to);
+    if(!from || !to) return;
+    const rect = boardEl.getBoundingClientRect();
+    arrowSvg.setAttribute('width', rect.width);
+    arrowSvg.setAttribute('height', rect.height);
+    arrowSvg.setAttribute('viewBox', '0 0 ' + rect.width + ' ' + rect.height);
+
+    const ns = 'http://www.w3.org/2000/svg';
+    const defs = document.createElementNS(ns,'defs');
+    const marker = document.createElementNS(ns,'marker');
+    marker.setAttribute('id','arrowhead');
+    marker.setAttribute('markerWidth','8');
+    marker.setAttribute('markerHeight','8');
+    marker.setAttribute('refX','5');
+    marker.setAttribute('refY','4');
+    marker.setAttribute('orient','auto');
+    const pathHead = document.createElementNS(ns,'path');
+    pathHead.setAttribute('d','M0,0 L8,4 L0,8 Z');
+    pathHead.setAttribute('fill','#3f9c78');
+    marker.appendChild(pathHead);
+    defs.appendChild(marker);
+    arrowSvg.appendChild(defs);
+
+    const dx = to.x - from.x, dy = to.y - from.y;
+    const len = Math.hypot(dx,dy) || 1;
+    const shorten = 16;
+    const ex = to.x - (dx/len)*shorten;
+    const ey = to.y - (dy/len)*shorten;
+
+    const line = document.createElementNS(ns,'line');
+    line.setAttribute('x1', from.x);
+    line.setAttribute('y1', from.y);
+    line.setAttribute('x2', ex);
+    line.setAttribute('y2', ey);
+    line.setAttribute('stroke', '#3f9c78');
+    line.setAttribute('stroke-width', '6');
+    line.setAttribute('stroke-linecap','round');
+    line.setAttribute('opacity','0.85');
+    line.setAttribute('marker-end','url(#arrowhead)');
+    arrowSvg.appendChild(line);
+  }
+
+  function onSquareClick(sq){
+    if(pendingPromotion || !boardInteractive()) return;
+    const piece = game.get(sq);
+
+    if(selected){
+      const move = legalTargets.find(m => m.to === sq);
+      if(move){
+        if(move.flags.includes('p')){
+          pendingPromotion = { from: move.from, to: move.to };
+          showPromotionPicker(move.color);
+        } else {
+          makeMove(move.from, move.to);
+        }
+        selected = null; legalTargets = [];
+        renderPieces();
+        return;
+      }
+    }
+
+    if(piece && piece.color === game.turn()){
+      selected = sq;
+      legalTargets = game.moves({ square: sq, verbose:true });
+    } else {
+      selected = null; legalTargets = [];
+    }
+    renderPieces();
+  }
+
+  let activeDrag = null; // { fromSquare, ghostEl, pieceEl }
+
+  function onSquarePointerDown(e, sq){
+    if(pendingPromotion || !boardInteractive()) return;
+    const piece = game.get(sq);
+    onSquareClick(sq);
+    if(selected === sq && piece && piece.color === game.turn()){
+      beginGhostDrag(e, sq);
+    }
+  }
+
+  function beginGhostDrag(e, sq){
+    const div = boardEl.querySelector('.sq[data-square="'+sq+'"]');
+    const pieceEl = div ? div.querySelector('.piece') : null;
+    if(!pieceEl) return;
+    const fontSize = window.getComputedStyle(pieceEl).fontSize;
+    const ghost = document.createElement('div');
+    ghost.className = 'drag-ghost';
+    ghost.style.fontSize = fontSize;
+    ghost.textContent = pieceEl.textContent;
+    document.body.appendChild(ghost);
+    positionGhost(ghost, e.clientX, e.clientY);
+    pieceEl.classList.add('dragging');
+
+    activeDrag = { fromSquare: sq, ghostEl: ghost, pieceEl: pieceEl };
+    document.addEventListener('pointermove', onDragPointerMove);
+    document.addEventListener('pointerup', onDragPointerUp);
+    document.addEventListener('pointercancel', onDragPointerUp);
+  }
+
+  function positionGhost(ghost, x, y){
+    ghost.style.left = x + 'px';
+    ghost.style.top = y + 'px';
+  }
+
+  function onDragPointerMove(e){
+    if(!activeDrag) return;
+    positionGhost(activeDrag.ghostEl, e.clientX, e.clientY);
+  }
+
+  function onDragPointerUp(e){
+    if(!activeDrag) return;
+    const drag = activeDrag;
+    activeDrag = null;
+    document.removeEventListener('pointermove', onDragPointerMove);
+    document.removeEventListener('pointerup', onDragPointerUp);
+    document.removeEventListener('pointercancel', onDragPointerUp);
+    drag.ghostEl.remove();
+    drag.pieceEl.classList.remove('dragging');
+
+    const elUnder = document.elementFromPoint(e.clientX, e.clientY);
+    const targetDiv = elUnder ? elUnder.closest('.sq') : null;
+    const targetSq = targetDiv ? targetDiv.dataset.square : null;
+
+    if(targetSq && targetSq !== drag.fromSquare){
+      onSquareClick(targetSq);
+    } else if(!targetSq){
+      selected = null; legalTargets = [];
+    }
+    renderPieces();
+  }
+
+  function showPromotionPicker(color){
+    promoCard.innerHTML = '';
+    ['q','r','b','n'].forEach(p => {
+      const btn = document.createElement('button');
+      btn.textContent = PIECE_UNICODE[color+p];
+      btn.addEventListener('click', () => {
+        makeMove(pendingPromotion.from, pendingPromotion.to, p);
+        pendingPromotion = null;
+        promoOverlay.classList.add('hidden');
+      });
+      promoCard.appendChild(btn);
+    });
+    promoOverlay.classList.remove('hidden');
+  }
+
+  function makeMove(from, to, promotion){
+    const result = game.move({ from, to, promotion: promotion || 'q' });
+    if(!result) return;
+    if(mode === 'puzzle'){
+      handlePuzzleUserMove(result);
+      return;
+    }
+    recordMove(result, game.fen());
+    lastHint = null;
+    hintBox.textContent = 'No hint yet — press "Get Hint".';
+    refresh();
+    maybeTriggerAI();
+  }
+
+  // ---------- Puzzle mode ----------
+  function bucketOf(rating){
+    if(rating <= 1100) return 'easy';
+    if(rating <= 1500) return 'medium';
+    if(rating <= 1900) return 'hard';
+    return 'expert';
+  }
+
+  function setPuzzleFeedback(text, kind){
+    const el = document.getElementById('puzzleFeedback');
+    el.textContent = text;
+    el.className = 'hint-box' + (kind ? ' ' + kind : '');
+  }
+
+  function updatePuzzleInfo(){
+    const el = document.getElementById('puzzleInfo');
+    if(!currentPuzzle){ el.textContent = ''; return; }
+    const colorWord = currentPuzzle.playerColor === 'w' ? 'White' : 'Black';
+    const themeText = currentPuzzle.themes.slice(0,3).join(', ');
+    el.textContent = 'Rating ' + currentPuzzle.rating + (themeText ? ' · ' + themeText : '') + ' — find the best move for ' + colorWord + '.';
+  }
+
+  function clearPuzzleTimer(){
+    if(puzzleTimer){
+      clearTimeout(puzzleTimer);
+      puzzleTimer = null;
+    }
+  }
+
+  function savePlayState(){
+    savedPlayState = {
+      fen: game.fen(),
+      posFens: posFens.slice(),
+      posMoves: posMoves.slice(),
+      viewIndex
+    };
+  }
+
+  function restorePlayState(){
+    if(!savedPlayState){
+      game.reset();
+      resetHistoryTracking();
+      return;
+    }
+    game.load(savedPlayState.fen);
+    posFens = savedPlayState.posFens;
+    posMoves = savedPlayState.posMoves;
+    viewIndex = savedPlayState.viewIndex;
+    savedPlayState = null;
+  }
+
+  function loadRandomPuzzle(){
+    clearPuzzleTimer();
+    puzzleGeneration++;
+    const diff = document.getElementById('puzzleDiff').value;
+    let pool = PUZZLES;
+    if(diff !== 'any') pool = PUZZLES.filter(p => bucketOf(p.rating) === diff);
+    if(pool.length === 0) pool = PUZZLES;
+    currentPuzzle = pool[Math.floor(Math.random() * pool.length)];
+    puzzleSolutionIndex = 0;
+    puzzleLastMove = null;
+    puzzleSolved = false;
+    selected = null; legalTargets = []; lastHint = null; pendingPromotion = null;
+    promoOverlay.classList.add('hidden');
+    game.load(currentPuzzle.fen);
+    document.getElementById('viewBanner').classList.add('hidden');
+    hintBox.textContent = 'No hint yet — press "Get Hint".';
+    setPuzzleFeedback('Your move.', '');
+    updatePuzzleInfo();
+    renderPieces();
+    updateStatus();
+  }
+
+  function handlePuzzleUserMove(result){
+    const expected = currentPuzzle.solution[puzzleSolutionIndex];
+    const expFrom = expected.slice(0,2), expTo = expected.slice(2,4);
+    const expPromo = expected.length > 4 ? expected.slice(4) : undefined;
+    const isCorrect = result.from === expFrom && result.to === expTo &&
+      (result.promotion || undefined) === expPromo;
+
+    selected = null; legalTargets = [];
+
+    if(!isCorrect){
+      game.undo();
+      setPuzzleFeedback('✗ Not quite — try again.', 'bad');
+      renderPieces();
+      updateStatus();
+      return;
+    }
+
+    puzzleLastMove = { from: result.from, to: result.to };
+    puzzleSolutionIndex++;
+
+    if(puzzleSolutionIndex >= currentPuzzle.solution.length){
+      puzzleSolved = true;
+      setPuzzleFeedback('✓ Solved! Well played.', 'good');
+      renderPieces();
+      updateStatus();
+      return;
+    }
+
+    setPuzzleFeedback('✓ Correct.', 'good');
+    renderPieces();
+    updateStatus();
+
+    const generation = puzzleGeneration;
+    puzzleTimer = setTimeout(() => {
+      if(generation !== puzzleGeneration) return;
+      puzzleTimer = null;
+      const oppUci = currentPuzzle.solution[puzzleSolutionIndex];
+      const f = oppUci.slice(0,2), t = oppUci.slice(2,4);
+      const p = oppUci.length > 4 ? oppUci.slice(4) : undefined;
+      const oppResult = game.move({ from: f, to: t, promotion: p });
+      if(!oppResult) return;
+      puzzleLastMove = { from: oppResult.from, to: oppResult.to };
+      puzzleSolutionIndex++;
+      if(puzzleSolutionIndex >= currentPuzzle.solution.length){
+        puzzleSolved = true;
+        setPuzzleFeedback('✓ Solved! Well played.', 'good');
+      } else {
+        setPuzzleFeedback('Your move.', '');
+      }
+      renderPieces();
+      updateStatus();
+    }, 450);
+  }
+
+  function revealSolution(){
+    if(!currentPuzzle) return;
+    clearPuzzleTimer();
+    puzzleGeneration++;
+    const generation = puzzleGeneration;
+    puzzleSolved = true;
+    let i = puzzleSolutionIndex;
+    function step(){
+      if(generation !== puzzleGeneration) return;
+      if(i >= currentPuzzle.solution.length){
+        setPuzzleFeedback('Solution shown — try "New Puzzle" for another.', '');
+        return;
+      }
+      const uci = currentPuzzle.solution[i];
+      const f = uci.slice(0,2), t = uci.slice(2,4);
+      const p = uci.length > 4 ? uci.slice(4) : undefined;
+      const r = game.move({ from: f, to: t, promotion: p });
+      if(r){ puzzleLastMove = { from: r.from, to: r.to }; renderPieces(); updateStatus(); }
+      i++;
+      puzzleTimer = setTimeout(() => {
+        if(generation !== puzzleGeneration) return;
+        puzzleTimer = null;
+        step();
+      }, 600);
+    }
+    step();
+  }
+
+  function setMode(newMode){
+    if(newMode === mode) return;
+    clearPuzzleTimer();
+    if(mode === 'play'){
+      savePlayState();
+    } else if(newMode === 'play'){
+      restorePlayState();
+    }
+
+    mode = newMode;
+    document.body.classList.toggle('mode-puzzle', mode === 'puzzle');
+    document.getElementById('modePlayBtn').classList.toggle('active', mode === 'play');
+    document.getElementById('modePuzzleBtn').classList.toggle('active', mode === 'puzzle');
+    selected = null; legalTargets = []; lastHint = null;
+    hintBox.textContent = 'No hint yet — press "Get Hint".';
+    if(mode === 'puzzle'){
+      document.getElementById('viewBanner').classList.add('hidden');
+      loadRandomPuzzle();
+    } else {
+      refresh();
+    }
+  }
+
+  function refresh(){
+    renderPieces();
+    updateStatus();
+    updateHistory();
+    updateViewBanner();
+  }
+
+  function updateViewBanner(){
+    const banner = document.getElementById('viewBanner');
+    const text = document.getElementById('viewBannerText');
+    if(isLive()){
+      banner.classList.add('hidden');
+    } else {
+      banner.classList.remove('hidden');
+      text.textContent = 'Viewing move ' + viewIndex + ' of ' + (posFens.length - 1);
+    }
+    document.getElementById('navBack').disabled = viewIndex === 0;
+    document.getElementById('navStart').disabled = viewIndex === 0;
+    document.getElementById('navForward').disabled = isLive();
+    document.getElementById('navLive').disabled = isLive();
+    document.getElementById('hintBtn').disabled = !isLive();
+  }
+
+  function updateStatus(){
+    const g = getDisplayGame();
+    let text = (g.turn() === 'w' ? 'White' : 'Black') + ' to move';
+    let isCheck = false;
+    if(g.in_checkmate()){
+      text = (g.turn() === 'w' ? 'Black' : 'White') + ' wins by checkmate';
+      isCheck = true;
+    } else if(g.in_stalemate()){
+      text = 'Draw — stalemate';
+    } else if(g.in_draw()){
+      text = 'Draw';
+    } else if(g.in_check()){
+      text += ' — check!';
+      isCheck = true;
+    }
+    statusEl.textContent = text;
+    statusEl.classList.toggle('check', isCheck);
+  }
+
+  function updateHistory(){
+    if(posMoves.length === 0){ historyEl.innerHTML = '<span style="color:var(--text-dim)">No moves yet.</span>'; return; }
+    let rows = '';
+    for(let i=0;i<posMoves.length;i+=2){
+      const num = i/2 + 1;
+      const whitePly = i + 1;
+      const blackPly = i + 2;
+      const whiteActive = viewIndex === whitePly ? ' active' : '';
+      rows += '<tr><td>'+num+'.</td>';
+      rows += '<td class="ply'+whiteActive+'" data-ply="'+whitePly+'">'+posMoves[i].san+'</td>';
+      if(posMoves[i+1]){
+        const blackActive = viewIndex === blackPly ? ' active' : '';
+        rows += '<td class="ply'+blackActive+'" data-ply="'+blackPly+'">'+posMoves[i+1].san+'</td>';
+      } else {
+        rows += '<td></td>';
+      }
+      rows += '</tr>';
+    }
+    historyEl.innerHTML = '<table>'+rows+'</table>';
+    historyEl.querySelectorAll('td.ply').forEach(td => {
+      td.addEventListener('click', () => goToPly(parseInt(td.dataset.ply, 10)));
+    });
+    const activeRow = historyEl.querySelector('.ply.active');
+    if(activeRow) activeRow.scrollIntoView({ block:'nearest' });
+    else historyEl.scrollTop = historyEl.scrollHeight;
+  }
+
+  function goToPly(ply){
+    if(ply < 0 || ply > posFens.length - 1) return;
+    viewIndex = ply;
+    selected = null; legalTargets = [];
+    refresh();
+  }
+
+  // ---------- Engine ----------
+  const VALUES = { p:100, n:320, b:330, r:500, q:900, k:0 };
+
+  function centerBonus(square){
+    const file = square.charCodeAt(0) - 97;
+    const rank = parseInt(square[1],10) - 1;
+    const distFromCenter = Math.abs(3.5-file) + Math.abs(3.5-rank);
+    return (7 - distFromCenter) * 2;
+  }
+
+  function materialEval(chessObj){
+    const board = chessObj.board();
+    let score = 0;
+    for(let r=0;r<8;r++){
+      for(let f=0;f<8;f++){
+        const cell = board[r][f];
+        if(!cell) continue;
+        const file = 'abcdefgh'[f];
+        const rank = 8 - r;
+        const sq = file + rank;
+        let val = VALUES[cell.type] + (cell.type === 'k' ? 0 : centerBonus(sq));
+        score += cell.color === 'w' ? val : -val;
+      }
+    }
+    return score;
+  }
+
+  function staticEval(chessObj){
+    if(chessObj.in_checkmate()) return -99999;
+    if(chessObj.in_stalemate() || chessObj.in_draw() || chessObj.insufficient_material() || chessObj.in_threefold_repetition()) return 0;
+    const white = materialEval(chessObj);
+    return chessObj.turn() === 'w' ? white : -white;
+  }
+
+  function orderMoves(moves){
+    return moves.slice().sort((a,b) => {
+      const av = a.captured ? (VALUES[a.captured] - VALUES[a.piece]/10) : 0;
+      const bv = b.captured ? (VALUES[b.captured] - VALUES[b.piece]/10) : 0;
+      return bv - av;
+    });
+  }
+
+  function negamax(chessObj, depth, alpha, beta){
+    if(depth === 0 || chessObj.game_over()){
+      return staticEval(chessObj);
+    }
+    const moves = orderMoves(chessObj.moves({verbose:true}));
+    let best = -Infinity;
+    for(const m of moves){
+      chessObj.move(m);
+      const score = -negamax(chessObj, depth-1, -beta, -alpha);
+      chessObj.undo();
+      if(score > best) best = score;
+      if(best > alpha) alpha = best;
+      if(alpha >= beta) break;
+    }
+    return best;
+  }
+
+  function findBestMove(chessObj, depth){
+    const moves = orderMoves(chessObj.moves({verbose:true}));
+    if(moves.length === 0) return null;
+    let best = null, bestScore = -Infinity;
+    let alpha = -Infinity, beta = Infinity;
+    for(const m of moves){
+      chessObj.move(m);
+      const score = -negamax(chessObj, depth-1, -beta, -alpha);
+      chessObj.undo();
+      if(score > bestScore){ bestScore = score; best = m; }
+      if(bestScore > alpha) alpha = bestScore;
+    }
+    return { move: best, score: bestScore };
+  }
+
+  function describeMove(chessObj, m){
+    const parts = [];
+    if(m.captured){
+      parts.push('captures the ' + PIECE_NAME[m.captured]);
+    }
+    if(m.flags.includes('k') || m.flags.includes('q')){
+      parts.push('castles the king to safety');
+    }
+    if(m.flags.includes('p')){
+      parts.push('promotes the pawn');
+    }
+    chessObj.move(m);
+    const givesCheck = chessObj.in_check();
+    const givesMate = chessObj.in_checkmate();
+    chessObj.undo();
+    if(givesMate) parts.push('delivers checkmate');
+    else if(givesCheck) parts.push('gives check');
+
+    if(parts.length === 0){
+      const file = m.to.charCodeAt(0) - 97;
+      const rank = parseInt(m.to[1],10) - 1;
+      const central = Math.abs(3.5-file) + Math.abs(3.5-rank) <= 2.5;
+      if(central) parts.push('improves control of the center');
+      else parts.push('develops the ' + PIECE_NAME[m.piece]);
+    }
+    return parts.join(', ');
+  }
+
+  function requestHint(){
+    if(mode === 'puzzle'){
+      if(!currentPuzzle || puzzleSolved || game.game_over()) return;
+    } else if(!isLive() || game.game_over()){
+      return;
+    }
+    hintBox.textContent = 'Thinking…';
+    lastHint = null;
+    drawHintArrow();
+    setTimeout(() => {
+      const depth = 3;
+      const result = findBestMove(game, depth);
+      if(!result || !result.move){
+        hintBox.textContent = 'No hint available.';
+        return;
+      }
+      const m = result.move;
+      const reason = describeMove(game, m);
+      lastHint = { from: m.from, to: m.to };
+      hintBox.innerHTML = 'Suggested: <span class="hint-move">' + m.san + '</span> — ' + reason + '.';
+      renderPieces();
+    }, 20);
+  }
+
+  function maybeTriggerAI(){
+    const aiColor = aiSelect.value;
+    if(aiColor === 'none') return;
+    if(game.game_over()) return;
+    if(game.turn() !== aiColor) return;
+    hintBox.textContent = 'AI is thinking…';
+    setTimeout(() => {
+      const difficulty = parseInt(diffSelect.value, 10);
+      let depth = difficulty === 1 ? 1 : (difficulty === 2 ? 2 : 3);
+      let candidate;
+      if(difficulty === 1){
+        const moves = game.moves({verbose:true});
+        const scored = moves.map(m => {
+          game.move(m);
+          const s = -staticEval(game);
+          game.undo();
+          return { m, s };
+        }).sort((a,b) => b.s - a.s);
+        const topN = scored.slice(0, Math.min(3, scored.length));
+        candidate = topN[Math.floor(Math.random()*topN.length)].m;
+      } else {
+        const result = findBestMove(game, depth);
+        candidate = result ? result.move : null;
+      }
+      if(candidate){
+        const result = game.move(candidate);
+        recordMove(result, game.fen());
+        hintBox.textContent = 'No hint yet — press "Get Hint".';
+        refresh();
+      }
+    }, 250);
+  }
+
+  // ---------- Controls ----------
+  document.getElementById('hintBtn').addEventListener('click', requestHint);
+  document.getElementById('clearHintBtn').addEventListener('click', () => {
+    lastHint = null;
+    hintBox.textContent = 'No hint yet — press "Get Hint".';
+    drawHintArrow();
+  });
+  document.getElementById('modePlayBtn').addEventListener('click', () => setMode('play'));
+  document.getElementById('modePuzzleBtn').addEventListener('click', () => setMode('puzzle'));
+  document.getElementById('newPuzzleBtn').addEventListener('click', loadRandomPuzzle);
+  document.getElementById('revealSolutionBtn').addEventListener('click', revealSolution);
+  document.getElementById('skipPuzzleBtn').addEventListener('click', loadRandomPuzzle);
+  document.getElementById('puzzleDiff').addEventListener('change', () => {
+    if(mode === 'puzzle') loadRandomPuzzle();
+  });
+  document.getElementById('newBtn').addEventListener('click', () => {
+    game.reset();
+    resetHistoryTracking();
+    selected = null; legalTargets = []; lastHint = null;
+    hintBox.textContent = 'No hint yet — press "Get Hint".';
+    refresh();
+  });
+  document.getElementById('undoBtn').addEventListener('click', () => {
+    if(!isLive()) return; // step back to live first
+    game.undo();
+    posMoves.pop(); posFens.pop();
+    if(aiSelect.value !== 'none' && posMoves.length > 0){
+      game.undo(); // undo AI's reply too if present
+      posMoves.pop(); posFens.pop();
+    }
+    viewIndex = posFens.length - 1;
+    selected = null; legalTargets = []; lastHint = null;
+    hintBox.textContent = 'No hint yet — press "Get Hint".';
+    refresh();
+  });
+  document.getElementById('flipBtn').addEventListener('click', () => {
+    flipped = !flipped;
+    buildBoard();
+  });
+  document.getElementById('navStart').addEventListener('click', () => goToPly(0));
+  document.getElementById('navBack').addEventListener('click', () => goToPly(viewIndex - 1));
+  document.getElementById('navForward').addEventListener('click', () => goToPly(viewIndex + 1));
+  document.getElementById('navLive').addEventListener('click', () => goToPly(posFens.length - 1));
+  document.getElementById('returnLiveBtn').addEventListener('click', () => goToPly(posFens.length - 1));
+  aiSelect.addEventListener('change', () => {
+    diffRow.style.display = aiSelect.value === 'none' ? 'none' : 'block';
+    maybeTriggerAI();
+  });
+
+  window.addEventListener('resize', drawHintArrow);
+
+  buildBoard();
+  refresh();
+})();
+</script>
+</body>
+</html>
