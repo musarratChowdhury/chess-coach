@@ -270,6 +270,13 @@
     line-height:1.4;
     min-height:1.4em;
   }
+  .tactic-alert{
+    display:flex; align-items:center; justify-content:space-between; gap:10px;
+    margin-top:10px; padding:8px 10px; border:1px solid var(--accent-2);
+    border-radius:8px; background:var(--last-move); font-size:0.84rem;
+  }
+  .tactic-alert .row{ flex:0 0 auto; }
+  .tactic-alert button{ padding:5px 9px; font-size:0.78rem; }
   .hint-move{ color:var(--accent-2); font-weight:700; }
   .history{
     max-height:190px;
@@ -355,6 +362,13 @@
         <button id="clearHintBtn">Clear</button>
       </div>
       <div class="hint-box" id="hintBox">No hint yet — press "Get Hint".</div>
+      <div class="tactic-alert hidden" id="tacticAlert" role="status">
+        <span>A tactic is possible.</span>
+        <div class="row">
+          <button class="primary" id="showTacticBtn">Show</button>
+          <button id="ignoreTacticBtn">Ignore</button>
+        </div>
+      </div>
     </div>
 
     <div class="card puzzle-only">
@@ -452,6 +466,9 @@
   const diffRow = document.getElementById('diffRow');
   const promoOverlay = document.getElementById('promoOverlay');
   const promoCard = document.getElementById('promoCard');
+  const tacticAlert = document.getElementById('tacticAlert');
+  let pendingTactic = null;
+  let tacticRequestId = 0;
 
   // ---------- Board art themes (public/assets/<set>/) ----------
   const BOARD_THEME_KEY = 'chess-coach.board-theme';
@@ -811,11 +828,13 @@
       handlePuzzleUserMove(result);
       return;
     }
+    cancelTacticAnalysis();
     recordMove(result, game.fen());
     lastHint = null;
     hintBox.textContent = 'No hint yet — press "Get Hint".';
     refresh();
     maybeTriggerAI();
+    maybeSuggestTactic();
   }
 
   // ---------- Puzzle mode ----------
@@ -881,6 +900,7 @@
     puzzleLastMove = null;
     puzzleSolved = false;
     selected = null; legalTargets = []; lastHint = null; pendingPromotion = null;
+    cancelTacticAnalysis();
     promoOverlay.classList.add('hidden');
     game.load(currentPuzzle.fen);
     document.getElementById('viewBanner').classList.add('hidden');
@@ -987,6 +1007,7 @@
     document.getElementById('modePlayBtn').classList.toggle('active', mode === 'play');
     document.getElementById('modePuzzleBtn').classList.toggle('active', mode === 'puzzle');
     selected = null; legalTargets = []; lastHint = null;
+    cancelTacticAnalysis();
     hintBox.textContent = 'No hint yet — press "Get Hint".';
     if(mode === 'puzzle'){
       document.getElementById('viewBanner').classList.add('hidden');
@@ -1182,12 +1203,55 @@
     return parts.join(', ');
   }
 
+  function isTacticalMove(chessObj, m){
+    if(m.captured || m.flags.includes('p')) return true;
+    chessObj.move(m);
+    const isTactical = chessObj.in_check() || chessObj.in_checkmate();
+    chessObj.undo();
+    return isTactical;
+  }
+
+  function hideTacticAlert(){
+    pendingTactic = null;
+    tacticAlert.classList.add('hidden');
+  }
+
+  function cancelTacticAnalysis(){
+    tacticRequestId++;
+    hideTacticAlert();
+  }
+
+  function showHintResult(result){
+    const m = result.move;
+    const reason = describeMove(game, m);
+    lastHint = { from: m.from, to: m.to };
+    hintBox.innerHTML = 'Suggested: <span class="hint-move">' + m.san + '</span> — ' + reason + '.';
+    hideTacticAlert();
+    renderPieces();
+  }
+
+  function maybeSuggestTactic(){
+    if(mode !== 'play' || !isLive() || game.game_over()) return;
+    if(aiSelect.value !== 'none' && game.turn() === aiSelect.value) return;
+    const requestId = ++tacticRequestId;
+    const position = game.fen();
+    setTimeout(() => {
+      if(requestId !== tacticRequestId || position !== game.fen()) return;
+      const result = findBestMove(game, 3);
+      if(!result || !result.move || !isTacticalMove(game, result.move)) return;
+      pendingTactic = { result, position };
+      tacticAlert.classList.remove('hidden');
+    }, 20);
+  }
+
   function requestHint(){
     if(mode === 'puzzle'){
       if(!currentPuzzle || puzzleSolved || game.game_over()) return;
     } else if(!isLive() || game.game_over()){
       return;
     }
+    tacticRequestId++;
+    hideTacticAlert();
     hintBox.textContent = 'Thinking…';
     lastHint = null;
     drawHintArrow();
@@ -1198,11 +1262,7 @@
         hintBox.textContent = 'No hint available.';
         return;
       }
-      const m = result.move;
-      const reason = describeMove(game, m);
-      lastHint = { from: m.from, to: m.to };
-      hintBox.innerHTML = 'Suggested: <span class="hint-move">' + m.san + '</span> — ' + reason + '.';
-      renderPieces();
+      showHintResult(result);
     }, 20);
   }
 
@@ -1235,13 +1295,23 @@
         recordMove(result, game.fen());
         hintBox.textContent = 'No hint yet — press "Get Hint".';
         refresh();
+        maybeSuggestTactic();
       }
     }, 250);
   }
 
   // ---------- Controls ----------
   document.getElementById('hintBtn').addEventListener('click', requestHint);
+  document.getElementById('showTacticBtn').addEventListener('click', () => {
+    if(!pendingTactic || pendingTactic.position !== game.fen()) {
+      cancelTacticAnalysis();
+      return;
+    }
+    showHintResult(pendingTactic.result);
+  });
+  document.getElementById('ignoreTacticBtn').addEventListener('click', cancelTacticAnalysis);
   document.getElementById('clearHintBtn').addEventListener('click', () => {
+    cancelTacticAnalysis();
     lastHint = null;
     hintBox.textContent = 'No hint yet — press "Get Hint".';
     drawHintArrow();
@@ -1258,6 +1328,7 @@
     game.reset();
     resetHistoryTracking();
     selected = null; legalTargets = []; lastHint = null;
+    cancelTacticAnalysis();
     hintBox.textContent = 'No hint yet — press "Get Hint".';
     refresh();
   });
@@ -1271,6 +1342,7 @@
     }
     viewIndex = posFens.length - 1;
     selected = null; legalTargets = []; lastHint = null;
+    cancelTacticAnalysis();
     hintBox.textContent = 'No hint yet — press "Get Hint".';
     refresh();
   });
