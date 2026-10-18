@@ -13,9 +13,11 @@ for deployment; there is no framework, no server code, and no database.
 - Node.js **>= 22.12** (Vite 8). Node 24 is what this project is developed on.
 - Network access in the browser: chess.js 0.10.3 is loaded from cdnjs (global `Chess`)
   and is intentionally not bundled.
-- The puzzle panel includes a `Lichess Puzzle` action that fetches a fresh puzzle
-  from Lichess when online. The embedded puzzle set remains available as an offline
-  fallback. No account or credentials are sent.
+- The puzzle panel includes a `Lichess Daily` action that fetches the public daily
+  puzzle from Lichess when online. The embedded puzzle set remains available as an
+  offline fallback, and is loaded automatically if the browser blocks the request.
+  No account or credentials are sent. The authenticated `/api/puzzle/next` endpoint
+  is intentionally not used.
 
 ## Local development
 

@@ -328,6 +328,8 @@
   .hint-box.bad{ color:var(--danger); font-weight:700; }
   .diff-row{ display:flex; gap:8px; align-items:center; margin-bottom:10px; }
   .diff-row select{ flex:1; }
+  .puzzle-actions{ display:flex; gap:8px; flex-wrap:wrap; margin-bottom:10px; }
+  .puzzle-actions button{ flex:1 1 140px; }
   .hidden{ display:none !important; }
   .footer-note{ font-size:0.78rem; color:var(--text-dim); text-align:center; margin-top:6px;}
 </style>
@@ -381,8 +383,10 @@
           <option value="hard">Hard (1500–1900)</option>
           <option value="expert">Expert (1900+)</option>
         </select>
+      </div>
+      <div class="puzzle-actions">
         <button id="newPuzzleBtn" class="primary">New Puzzle</button>
-        <button id="lichessPuzzleBtn">Lichess Puzzle</button>
+        <button id="lichessPuzzleBtn">Lichess Daily</button>
       </div>
       <div class="puzzle-info" id="puzzleInfo">Loading…</div>
       <div class="hint-box" id="puzzleFeedback"></div>
@@ -916,11 +920,13 @@
   async function loadLichessPuzzle(){
     const button = document.getElementById('lichessPuzzleBtn');
     button.disabled = true;
-    setPuzzleFeedback('Loading a fresh Lichess puzzle…', '');
+    setPuzzleFeedback('Loading the Lichess daily puzzle…', '');
     try{
-      const response = await fetch('https://lichess.org/api/puzzle/next', {
-        headers: { Accept: 'application/json' },
-        credentials: 'omit'
+      // /api/puzzle/next is an authenticated user-queue endpoint. The daily
+      // puzzle is public and can be fetched by this static client.
+      const response = await fetch('https://lichess.org/api/puzzle/daily', {
+        credentials: 'omit',
+        cache: 'no-store'
       });
       if(!response.ok) throw new Error('Lichess returned HTTP ' + response.status);
       const data = await response.json();
@@ -971,7 +977,11 @@
       renderPieces();
       updateStatus();
     }catch(error){
-      setPuzzleFeedback('Could not load a Lichess puzzle: ' + error.message + ' Try New Puzzle instead.', 'bad');
+      const detail = error instanceof TypeError
+        ? 'the browser could not reach Lichess (check your connection or content blocker)'
+        : error.message;
+      loadRandomPuzzle();
+      setPuzzleFeedback('Lichess is unavailable (' + detail + '). An embedded puzzle was loaded instead.', 'bad');
     }finally{
       button.disabled = false;
     }
