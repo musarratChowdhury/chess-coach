@@ -1,7 +1,7 @@
 # Chess Coach
 
 A single-page chess trainer: play against a small on-device engine, solve embedded
-puzzles, get hints, and switch the board between three furnished art themes
+or fresh Lichess puzzles, get hints, and switch the board between three furnished art themes
 (default / green / pink).
 
 `index.html` is the entire app — markup, CSS, embedded puzzle data and the game
@@ -13,6 +13,9 @@ for deployment; there is no framework, no server code, and no database.
 - Node.js **>= 22.12** (Vite 8). Node 24 is what this project is developed on.
 - Network access in the browser: chess.js 0.10.3 is loaded from cdnjs (global `Chess`)
   and is intentionally not bundled.
+- The puzzle panel includes a `Lichess Puzzle` action that fetches a fresh puzzle
+  from Lichess when online. The embedded puzzle set remains available as an offline
+  fallback. No account or credentials are sent.
 
 ## Local development
 

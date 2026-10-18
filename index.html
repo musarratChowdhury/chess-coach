@@ -382,6 +382,7 @@
           <option value="expert">Expert (1900+)</option>
         </select>
         <button id="newPuzzleBtn" class="primary">New Puzzle</button>
+        <button id="lichessPuzzleBtn">Lichess Puzzle</button>
       </div>
       <div class="puzzle-info" id="puzzleInfo">Loading…</div>
       <div class="hint-box" id="puzzleFeedback"></div>
@@ -856,7 +857,8 @@
     if(!currentPuzzle){ el.textContent = ''; return; }
     const colorWord = currentPuzzle.playerColor === 'w' ? 'White' : 'Black';
     const themeText = currentPuzzle.themes.slice(0,3).join(', ');
-    el.textContent = 'Rating ' + currentPuzzle.rating + (themeText ? ' · ' + themeText : '') + ' — find the best move for ' + colorWord + '.';
+    const sourceText = currentPuzzle.source === 'lichess' ? ' · Lichess' : '';
+    el.textContent = 'Rating ' + currentPuzzle.rating + sourceText + (themeText ? ' · ' + themeText : '') + ' — find the best move for ' + colorWord + '.';
   }
 
   function clearPuzzleTimer(){
@@ -909,6 +911,70 @@
     updatePuzzleInfo();
     renderPieces();
     updateStatus();
+  }
+
+  async function loadLichessPuzzle(){
+    const button = document.getElementById('lichessPuzzleBtn');
+    button.disabled = true;
+    setPuzzleFeedback('Loading a fresh Lichess puzzle…', '');
+    try{
+      const response = await fetch('https://lichess.org/api/puzzle/next', {
+        headers: { Accept: 'application/json' },
+        credentials: 'omit'
+      });
+      if(!response.ok) throw new Error('Lichess returned HTTP ' + response.status);
+      const data = await response.json();
+      const source = new Chess();
+      if(!data.game || !data.game.pgn || !data.puzzle || !Array.isArray(data.puzzle.solution)){
+        throw new Error('Lichess returned an incomplete puzzle');
+      }
+      if(!source.load_pgn(data.game.pgn)) throw new Error('Unable to read the Lichess game');
+      const history = source.history({ verbose:true });
+      const headers = source.header();
+      const position = new Chess(headers.FEN || undefined);
+      const initialPly = Number(data.puzzle.initialPly);
+      if(!Number.isInteger(initialPly) || initialPly < 0 || initialPly > history.length){
+        throw new Error('Lichess returned an invalid starting position');
+      }
+      for(const move of history.slice(0, initialPly)){
+        if(!position.move({ from:move.from, to:move.to, promotion:move.promotion })) {
+          throw new Error('Unable to reconstruct the Lichess position');
+        }
+      }
+      const firstMove = data.puzzle.solution[0];
+      const playerColor = position.turn();
+      if(typeof firstMove !== 'string' || !/^[a-h][1-8][a-h][1-8][qrbn]?$/.test(firstMove)){
+        throw new Error('Lichess returned an invalid solution');
+      }
+      clearPuzzleTimer();
+      puzzleGeneration++;
+      currentPuzzle = {
+        id: data.puzzle.id,
+        rating: Number(data.puzzle.rating) || 0,
+        themes: Array.isArray(data.puzzle.themes) ? data.puzzle.themes : [],
+        fen: position.fen(),
+        playerColor,
+        solution: data.puzzle.solution,
+        source: 'lichess'
+      };
+      puzzleSolutionIndex = 0;
+      puzzleLastMove = null;
+      puzzleSolved = false;
+      selected = null; legalTargets = []; lastHint = null; pendingPromotion = null;
+      cancelTacticAnalysis();
+      promoOverlay.classList.add('hidden');
+      game.load(currentPuzzle.fen);
+      document.getElementById('viewBanner').classList.add('hidden');
+      hintBox.textContent = 'No hint yet — press "Get Hint".';
+      setPuzzleFeedback('Your move.', '');
+      updatePuzzleInfo();
+      renderPieces();
+      updateStatus();
+    }catch(error){
+      setPuzzleFeedback('Could not load a Lichess puzzle: ' + error.message + ' Try New Puzzle instead.', 'bad');
+    }finally{
+      button.disabled = false;
+    }
   }
 
   function handlePuzzleUserMove(result){
@@ -1319,6 +1385,7 @@
   document.getElementById('modePlayBtn').addEventListener('click', () => setMode('play'));
   document.getElementById('modePuzzleBtn').addEventListener('click', () => setMode('puzzle'));
   document.getElementById('newPuzzleBtn').addEventListener('click', loadRandomPuzzle);
+  document.getElementById('lichessPuzzleBtn').addEventListener('click', loadLichessPuzzle);
   document.getElementById('revealSolutionBtn').addEventListener('click', revealSolution);
   document.getElementById('skipPuzzleBtn').addEventListener('click', loadRandomPuzzle);
   document.getElementById('puzzleDiff').addEventListener('change', () => {
