@@ -1,0 +1,20 @@
+{
+  "name": "chess-coach",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Single-page chess trainer: play, puzzles, hints and an on-device engine search.",
+  "engines": {
+    "node": ">=22.12.0"
+  },
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "check:assets": "node scripts/check-assets.mjs",
+    "verify": "node scripts/check-assets.mjs && vite build && node scripts/check-assets.mjs --dist"
+  },
+  "devDependencies": {
+    "vite": "^8.3.4"
+  }
+}

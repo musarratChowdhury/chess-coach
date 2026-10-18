@@ -1,0 +1,13 @@
+# dependencies
+node_modules/
+
+# build output
+dist/
+
+# Vercel CLI metadata (created by `vercel link` / `vercel pull`)
+.vercel/
+
+# local tooling artifacts
+.playwright-mcp/
+*.log
+.DS_Store

@@ -1,10 +1,19 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-board="default">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Chess Coach</title>
+<link rel="icon" type="image/png" href="/assets/chess/white_knight.png">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/chess.js/0.10.3/chess.min.js"></script>
+<script>
+  // Restore the saved board theme before first paint (avoids a flash of the default set).
+  try{
+    var savedBoard = localStorage.getItem('chess-coach.board-theme');
+    document.documentElement.dataset.board =
+      (savedBoard === 'green' || savedBoard === 'pink') ? savedBoard : 'default';
+  }catch(e){}
+</script>
 <style>
   :root{
     --bg:#f4f1ea;
@@ -14,8 +23,6 @@
     --border:#ded7cb;
     --accent:#8a5a44;
     --accent-2:#3f6e5b;
-    --light-sq:#eee3cf;
-    --dark-sq:#9c7256;
     --select-sq: rgba(255,214,102,0.65);
     --last-move: rgba(96,150,220,0.4);
     --move-dot: rgba(60,60,60,0.35);
@@ -33,8 +40,6 @@
       --border:#3a352f;
       --accent:#d68f6f;
       --accent-2:#7fbfa1;
-      --light-sq:#c9a877;
-      --dark-sq:#6e4a34;
       --select-sq: rgba(255,214,102,0.55);
       --last-move: rgba(120,170,230,0.4);
       --move-dot: rgba(255,255,255,0.4);
@@ -50,13 +55,42 @@
     --border:#3a352f;
     --accent:#d68f6f;
     --accent-2:#7fbfa1;
-    --light-sq:#c9a877;
-    --dark-sq:#6e4a34;
     --select-sq: rgba(255,214,102,0.55);
     --last-move: rgba(120,170,230,0.4);
     --move-dot: rgba(255,255,255,0.4);
     --capture-ring: rgba(230,90,90,0.7);
     --shadow: 0 6px 24px rgba(0,0,0,0.4);
+  }
+  /* ---------- Board art themes ----------
+     Values measured from public/assets/<set>/{board,board_alt}.png:
+     board_alt.png is a 256x256 canvas with the 180x180 checkerboard at (38,38),
+     so the play area is 70.3125% of the canvas inset by 14.84375%. */
+  :root[data-board="default"]{
+    --board-art:url("/assets/chess/board_alt.png");
+    --board-light:#FFFFFF;
+    --board-dark:#393939;
+    --board-bg:#393939;
+    --board-coord:#FFFFFF;
+    --move-dot:rgba(70,70,70,0.45);
+    --capture-ring:rgba(200,45,45,0.6);
+  }
+  :root[data-board="green"]{
+    --board-art:url("/assets/chess_green/board_alt.png");
+    --board-light:#FCF4E1;
+    --board-dark:#057137;
+    --board-bg:#057137;
+    --board-coord:#FCF4E1;
+    --move-dot:rgba(130,130,130,0.5);
+    --capture-ring:rgba(255,90,90,0.7);
+  }
+  :root[data-board="pink"]{
+    --board-art:url("/assets/chess_pink/board_alt.png");
+    --board-light:#FA8EC8;
+    --board-dark:#030B1E;
+    --board-bg:#FA8EC8;
+    --board-coord:#030B1E;
+    --move-dot:rgba(130,130,130,0.5);
+    --capture-ring:rgba(255,70,70,0.6);
   }
   *{box-sizing:border-box;}
   body{
@@ -91,25 +125,52 @@
   .board-wrap{
     position:relative;
     flex:0 0 auto;
-  }
-  #board{
-    display:grid;
-    grid-template-columns:repeat(8,min(11vw,58px));
-    grid-template-rows:repeat(8,min(11vw,58px));
-    border:5px solid var(--accent);
-    border-radius:6px;
-    overflow:hidden;
-    box-shadow:var(--shadow);
+    width:min(620px, 94vw);
+    aspect-ratio:1 / 1;
+    background-color:var(--board-bg);
+    background-image:var(--board-art);
+    background-repeat:no-repeat;
+    background-size:100% 100%;
+    image-rendering:pixelated;
     user-select:none;
+  }
+  /* The playable grid is overlaid on the board art at the art's own square offsets. */
+  #board{
+    position:absolute;
+    left:14.84375%;
+    top:14.84375%;
+    width:70.3125%;
+    height:70.3125%;
+    display:grid;
+    grid-template-columns:repeat(8,1fr);
+    grid-template-rows:repeat(8,1fr);
+    user-select:none;
+  }
+  .board-coords{
+    position:absolute;
+    pointer-events:none;
+    user-select:none;
+    color:var(--board-coord);
+    font-family:ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-weight:700;
+    font-size:min(14px, 2.1vw);
+    line-height:1;
+    opacity:0.92;
+  }
+  .coords-rank{
+    right:0; top:14.84375%; height:70.3125%; width:14.84375%;
+    display:grid; grid-template-rows:repeat(8,1fr); place-items:center;
+  }
+  .coords-file{
+    left:14.84375%; bottom:0; width:70.3125%; height:7.8%;
+    display:grid; grid-template-columns:repeat(8,1fr); place-items:center;
   }
   .sq{
     position:relative;
     display:flex;
     align-items:center;
     justify-content:center;
-    font-size:min(7vw,38px);
     cursor:pointer;
-    line-height:1;
     touch-action:none;
   }
   .sq .piece.dragging{ opacity:0; }
@@ -119,11 +180,11 @@
     pointer-events:none;
     z-index:999;
     transform:translate(-50%,-50%);
-    filter:drop-shadow(0 3px 6px rgba(0,0,0,0.45));
-    line-height:1;
+    image-rendering:pixelated;
   }
-  .sq.light{ background:var(--light-sq); }
-  .sq.dark{ background:var(--dark-sq); }
+  .drag-ghost img{ display:block; width:100%; height:100%; }
+  .sq.light{ background:var(--board-light); }
+  .sq.dark{ background:var(--board-dark); }
   .sq.last-from::before, .sq.last-to::before{
     content:"";
     position:absolute; inset:0;
@@ -134,7 +195,23 @@
     position:absolute; inset:0;
     background:var(--select-sq);
   }
-  .sq .piece{ position:relative; z-index:2; filter:drop-shadow(0 1px 1px rgba(0,0,0,0.35)); pointer-events:none; }
+  /* Piece art is 16-20px tall inside the 22.5px art square, bottom-aligned. */
+  .sq .piece{
+    position:absolute;
+    left:50%;
+    bottom:4%;
+    transform:translateX(-50%);
+    width:auto;
+    z-index:2;
+    pointer-events:none;
+    image-rendering:pixelated;
+  }
+  .sq .piece.p-pawn{ height:71.1%; }
+  .sq .piece.p-knight{ height:80%; }
+  .sq .piece.p-bishop{ height:84.4%; }
+  .sq .piece.p-rook{ height:80%; }
+  .sq .piece.p-queen{ height:80%; }
+  .sq .piece.p-king{ height:88.9%; }
   .sq .dot{
     position:absolute; width:26%; height:26%; border-radius:50%;
     background:var(--move-dot); z-index:1; pointer-events:none;
@@ -143,11 +220,11 @@
     position:absolute; inset:6%; border-radius:50%;
     border:4px solid var(--capture-ring); z-index:1; pointer-events:none;
   }
-  .sq .coord{
-    position:absolute; bottom:1px; right:3px; font-size:9px; opacity:0.55; z-index:1; pointer-events:none;
-    font-family: monospace;
+  #arrowSvg{
+    position:absolute; left:14.84375%; top:14.84375%;
+    width:70.3125%; height:70.3125%;
+    pointer-events:none; z-index:5;
   }
-  #arrowSvg{ position:absolute; top:0; left:0; width:100%; height:100%; pointer-events:none; z-index:5; }
   .panel{
     width:300px;
     max-width:90vw;
@@ -220,10 +297,22 @@
     background:var(--panel-bg); border-radius:10px; padding:18px 20px;
     display:flex; gap:10px; box-shadow:var(--shadow);
   }
-  .promo-card button{ font-size:1.8rem; padding:8px 14px; }
+  .promo-card button{ padding:8px 12px; line-height:1; }
+  .promo-card img{ display:block; height:min(9vw,42px); width:auto; image-rendering:pixelated; }
   .mode-toggle{ display:flex; gap:8px; justify-content:center; margin-bottom:18px; }
   .mode-toggle button{ padding:8px 18px; font-size:0.9rem; border-radius:20px; }
   .mode-toggle button.active{ background:var(--accent); border-color:var(--accent); color:#fff; font-weight:600; }
+  .theme-row{ display:flex; gap:8px; flex-wrap:wrap; }
+  .theme-btn{ display:flex; align-items:center; gap:6px; padding:7px 11px; font-size:0.82rem; }
+  .theme-btn.active{ background:var(--accent); border-color:var(--accent); color:#fff; font-weight:600; }
+  .theme-btn .swatch{
+    width:15px; height:15px; border-radius:3px; flex:0 0 auto;
+    border:1px solid rgba(0,0,0,0.3);
+    background-image:conic-gradient(var(--sw1) 0 25%, var(--sw2) 0 50%, var(--sw1) 0 75%, var(--sw2) 0);
+  }
+  .theme-btn[data-theme-id="default"] .swatch{ --sw1:#393939; --sw2:#FFFFFF; }
+  .theme-btn[data-theme-id="green"] .swatch{ --sw1:#057137; --sw2:#FCF4E1; }
+  .theme-btn[data-theme-id="pink"] .swatch{ --sw1:#030B1E; --sw2:#FA8EC8; }
   .puzzle-only{ display:none; }
   body.mode-puzzle .puzzle-only{ display:block; }
   body.mode-puzzle .play-only{ display:none; }
@@ -250,6 +339,8 @@
 <div class="layout">
   <div class="board-wrap">
     <div id="board"></div>
+    <div class="board-coords coords-rank" id="rankLabels" aria-hidden="true"></div>
+    <div class="board-coords coords-file" id="fileLabels" aria-hidden="true"></div>
     <svg id="arrowSvg"></svg>
   </div>
 
@@ -290,7 +381,7 @@
       <label>Opponent</label>
       <select id="aiSelect">
         <option value="none">Two players (no AI)</option>
-        <option value="b">AI plays Black</option>
+        <option value="b" selected>AI plays Black</option>
         <option value="w">AI plays White</option>
       </select>
       <div id="diffRow" style="margin-top:8px;">
@@ -308,6 +399,21 @@
         <button id="newBtn" class="play-only">New Game</button>
         <button id="undoBtn" class="play-only">Undo</button>
         <button id="flipBtn">Flip Board</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <label>Board theme</label>
+      <div class="theme-row" id="themeRow">
+        <button class="theme-btn active" data-theme-id="default" aria-pressed="true" title="Default board">
+          <span class="swatch"></span>Default
+        </button>
+        <button class="theme-btn" data-theme-id="green" aria-pressed="false" title="Green board">
+          <span class="swatch"></span>Green
+        </button>
+        <button class="theme-btn" data-theme-id="pink" aria-pressed="false" title="Pink board">
+          <span class="swatch"></span>Pink
+        </button>
       </div>
     </div>
 
@@ -346,6 +452,48 @@
   const diffRow = document.getElementById('diffRow');
   const promoOverlay = document.getElementById('promoOverlay');
   const promoCard = document.getElementById('promoCard');
+
+  // ---------- Board art themes (public/assets/<set>/) ----------
+  const BOARD_THEME_KEY = 'chess-coach.board-theme';
+  const BOARD_SETS = { default:'/assets/chess/', green:'/assets/chess_green/', pink:'/assets/chess_pink/' };
+  let boardTheme = 'default';
+
+  function pieceFile(color, type){
+    return BOARD_SETS[boardTheme] + (color === 'w' ? 'white_' : 'black_') + PIECE_NAME[type] + '.png';
+  }
+
+  function readStoredTheme(){
+    try{
+      const saved = localStorage.getItem(BOARD_THEME_KEY);
+      return BOARD_SETS[saved] ? saved : 'default';
+    }catch(e){ return 'default'; }
+  }
+
+  function preloadBoardArt(setId){
+    const prefix = BOARD_SETS[setId];
+    ['white','black'].forEach(shade => {
+      Object.keys(PIECE_NAME).forEach(type => {
+        const img = new Image();
+        img.src = prefix + shade + '_' + PIECE_NAME[type] + '.png';
+      });
+    });
+    const art = new Image();
+    art.src = prefix + 'board_alt.png';
+  }
+
+  function setBoardTheme(setId){
+    if(!BOARD_SETS[setId]) setId = 'default';
+    boardTheme = setId;
+    document.documentElement.dataset.board = setId;
+    try{ localStorage.setItem(BOARD_THEME_KEY, setId); }catch(e){}
+    document.querySelectorAll('.theme-btn').forEach(btn => {
+      const isOn = btn.dataset.themeId === setId;
+      btn.classList.toggle('active', isOn);
+      btn.setAttribute('aria-pressed', isOn ? 'true' : 'false');
+    });
+    preloadBoardArt(setId);
+    renderPieces();
+  }
 
   // Curated batch of real Lichess puzzles (FEN reconstructed & solution-verified offline),
   // spread across four difficulty tiers. id/rating/themes come straight from the Lichess
@@ -397,10 +545,6 @@
     viewIndex = 0;
   }
 
-  const PIECE_UNICODE = {
-    wp:'♙', wn:'♘', wb:'♗', wr:'♖', wq:'♕', wk:'♔',
-    bp:'♟', bn:'♞', bb:'♝', br:'♜', bq:'♛', bk:'♚'
-  };
   const PIECE_NAME = { p:'pawn', n:'knight', b:'bishop', r:'rook', q:'queen', k:'king' };
 
   function files(){ return ['a','b','c','d','e','f','g','h']; }
@@ -434,7 +578,27 @@
       div.addEventListener('pointerdown', (e) => onSquarePointerDown(e, sq));
       boardEl.appendChild(div);
     });
+    renderCoords(squares);
     renderPieces();
+  }
+
+  // Board orientation: false = White at the bottom (the human's side when the AI plays Black).
+  function setFlipped(next){
+    if(next === flipped) return;
+    flipped = next;
+    buildBoard();
+    drawHintArrow();   // arrow geometry is pixel-based, so it must be redrawn after a flip
+  }
+
+  // Rank/file guides drawn in the board art's margin; they follow the flip.
+  function renderCoords(squares){
+    let files = '', ranks = '';
+    for(let i = 0; i < 8; i++){
+      files += '<span>' + squares[i][0].toUpperCase() + '</span>';  // top row → file order
+      ranks += '<span>' + squares[i * 8][1] + '</span>';            // left column → rank order
+    }
+    document.getElementById('fileLabels').innerHTML = files;
+    document.getElementById('rankLabels').innerHTML = ranks;
   }
 
   function renderPieces(){
@@ -442,15 +606,17 @@
     const lastMove = mode === 'puzzle' ? puzzleLastMove : (viewIndex > 0 ? posMoves[viewIndex - 1] : null);
     const squares = boardEl.querySelectorAll('.sq');
     squares.forEach(div => {
-      div.querySelectorAll('.piece,.dot,.ring,.coord').forEach(n => n.remove());
+      div.querySelectorAll('.piece,.dot,.ring').forEach(n => n.remove());
       div.classList.remove('selected', 'last-from', 'last-to');
       const sq = div.dataset.square;
       const piece = displayGame.get(sq);
       if(piece){
-        const span = document.createElement('span');
-        span.className = 'piece';
-        span.textContent = PIECE_UNICODE[piece.color + piece.type];
-        div.appendChild(span);
+        const img = document.createElement('img');
+        img.className = 'piece p-' + PIECE_NAME[piece.type];
+        img.src = pieceFile(piece.color, piece.type);
+        img.alt = (piece.color === 'w' ? 'White ' : 'Black ') + PIECE_NAME[piece.type];
+        img.draggable = false;
+        div.appendChild(img);
       }
       if(selected === sq){
         div.classList.add('selected');
@@ -570,11 +736,12 @@
     const div = boardEl.querySelector('.sq[data-square="'+sq+'"]');
     const pieceEl = div ? div.querySelector('.piece') : null;
     if(!pieceEl) return;
-    const fontSize = window.getComputedStyle(pieceEl).fontSize;
+    const rect = pieceEl.getBoundingClientRect();
     const ghost = document.createElement('div');
     ghost.className = 'drag-ghost';
-    ghost.style.fontSize = fontSize;
-    ghost.textContent = pieceEl.textContent;
+    ghost.style.width = rect.width + 'px';
+    ghost.style.height = rect.height + 'px';
+    ghost.appendChild(pieceEl.cloneNode());
     document.body.appendChild(ghost);
     positionGhost(ghost, e.clientX, e.clientY);
     pieceEl.classList.add('dragging');
@@ -621,7 +788,12 @@
     promoCard.innerHTML = '';
     ['q','r','b','n'].forEach(p => {
       const btn = document.createElement('button');
-      btn.textContent = PIECE_UNICODE[color+p];
+      const img = document.createElement('img');
+      img.src = pieceFile(color, p);
+      img.alt = '';
+      btn.appendChild(img);
+      btn.title = 'Promote to ' + PIECE_NAME[p];
+      btn.setAttribute('aria-label', 'Promote to ' + PIECE_NAME[p]);
       btn.addEventListener('click', () => {
         makeMove(pendingPromotion.from, pendingPromotion.to, p);
         pendingPromotion = null;
@@ -1103,8 +1275,7 @@
     refresh();
   });
   document.getElementById('flipBtn').addEventListener('click', () => {
-    flipped = !flipped;
-    buildBoard();
+    setFlipped(!flipped);
   });
   document.getElementById('navStart').addEventListener('click', () => goToPly(0));
   document.getElementById('navBack').addEventListener('click', () => goToPly(viewIndex - 1));
@@ -1113,11 +1284,20 @@
   document.getElementById('returnLiveBtn').addEventListener('click', () => goToPly(posFens.length - 1));
   aiSelect.addEventListener('change', () => {
     diffRow.style.display = aiSelect.value === 'none' ? 'none' : 'block';
+    // Orient the board toward the human's side: AI on White → Black at the bottom.
+    // "Two players" has no perspective, so it leaves the current orientation alone.
+    if(aiSelect.value === 'w') setFlipped(true);
+    else if(aiSelect.value === 'b') setFlipped(false);
     maybeTriggerAI();
+  });
+
+  document.querySelectorAll('.theme-btn').forEach(btn => {
+    btn.addEventListener('click', () => setBoardTheme(btn.dataset.themeId));
   });
 
   window.addEventListener('resize', drawHintArrow);
 
+  setBoardTheme(readStoredTheme());
   buildBoard();
   refresh();
 })();
