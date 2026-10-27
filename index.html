@@ -332,12 +332,234 @@
   .puzzle-actions button{ flex:1 1 140px; }
   .hidden{ display:none !important; }
   .footer-note{ font-size:0.78rem; color:var(--text-dim); text-align:center; margin-top:6px;}
+
+  /* ---------- AI Coach chat panel ---------- */
+  .ai-chat-toggle{
+    background:var(--accent);
+    color:#fff;
+    border-color:var(--accent);
+    font-weight:600;
+    margin-left:8px;
+  }
+  .ai-chat-overlay{
+    position:fixed;
+    inset:0;
+    background:rgba(0,0,0,0.5);
+    z-index:100;
+    display:none;
+    backdrop-filter:blur(2px);
+  }
+  .ai-chat-panel{
+    position:fixed;
+    top:0;
+    right:0;
+    width:min(380px,100vw);
+    height:100vh;
+    background:var(--panel-bg);
+    border-left:1px solid var(--border);
+    z-index:101;
+    display:flex;
+    flex-direction:column;
+    transform:translateX(100%);
+    transition:transform 0.3s ease;
+    box-shadow:var(--shadow);
+  }
+  .ai-chat-panel.open{ transform:translateX(0); }
+  .ai-chat-header{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:8px;
+    padding:12px 16px;
+    border-bottom:1px solid var(--border);
+    background:var(--panel-bg);
+    flex-shrink:0;
+  }
+  .ai-chat-header h2{ margin:0; font-size:1.05rem;}
+  .ai-chat-close{
+    background:none;
+    border:none;
+    font-size:1.5rem;
+    color:var(--text-dim);
+    cursor:pointer;
+    line-height:1;
+    padding:0 4px;
+  }
+  .ai-chat-messages{
+    flex:1;
+    overflow-y:auto;
+    padding:14px 16px;
+    gap:12px;
+    display:flex;
+    flex-direction:column;
+    flex-shrink:1;
+    min-height:0;
+  }
+  .ai-message{ display:flex; gap:10px; align-items:flex-start; }
+  .ai-message.ai{ flex-direction:row-reverse; }
+  .ai-bubble{
+    max-width:85%;
+    padding:10px 14px;
+    border-radius:10px;
+    font-size:0.88rem;
+    line-height:1.5;
+    position:relative;
+    word-wrap:break-word;
+  }
+  .ai-message.user .ai-bubble{
+    background:var(--accent);
+    color:#fff;
+    border-bottom-right-radius:2px;
+  }
+  .ai-message.ai .ai-bubble{
+    background:var(--bg);
+    border:1px solid var(--border);
+    border-bottom-left-radius:2px;
+    color:var(--text);
+  }
+  .ai-avatar{
+    width:28px;
+    height:28px;
+    border-radius:50%;
+    background:var(--accent-2);
+    color:#fff;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    font-size:0.9rem;
+    flex-shrink:0;
+  }
+  .ai-message.ai .ai-avatar{ order:-1; }
+  .ai-message.user .ai-avatar{ order:2; }
+  .ai-time{
+    font-size:0.7rem;
+    color:var(--text-dim);
+    align-self:flex-end;
+    margin-top:4px;
+  }
+  .move-token{
+    display:inline-block;
+    background:var(--accent-2);
+    color:#fff;
+    padding:2px 6px;
+    border-radius:4px;
+    font-size:0.8rem;
+    cursor:pointer;
+    text-decoration:none;
+    white-space:nowrap;
+    font-family:ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  }
+  .move-token:hover{ opacity:0.9; text-decoration:underline;}
+  .ai-input-area{
+    display:flex;
+    gap:8px;
+    padding:12px 16px;
+    border-top:1px solid var(--border);
+    background:var(--panel-bg);
+    flex-shrink:0;
+  }
+  .ai-input{
+    flex:1;
+    padding:10px 12px;
+    border:1px solid var(--border);
+    border-radius:8px;
+    background:var(--bg);
+    color:var(--text);
+    font-family:inherit;
+    font-size:0.88rem;
+    min-height:44px;
+    resize:none;
+  }
+  .ai-send{
+    background:var(--accent);
+    color:#fff;
+    border:none;
+    border-radius:8px;
+    padding:0 16px;
+    cursor:pointer;
+    font-weight:600;
+    white-space:nowrap;
+    flex-shrink:0;
+  }
+  .ai-send:disabled{ opacity:0.5; cursor:default; }
+  .ai-chip-row{
+    display:flex;
+    gap:6px;
+    padding:10px 16px;
+    flex-wrap:wrap;
+    border-bottom:1px solid var(--border);
+    background:var(--panel-bg);
+    flex-shrink:0;
+  }
+  .ai-chip{
+    background:var(--bg);
+    border:1px solid var(--border);
+    color:var(--text-dim);
+    padding:6px 10px;
+    border-radius:6px;
+    font-size:0.8rem;
+    cursor:pointer;
+  }
+  .ai-chip:hover{ border-color:var(--accent-2); color:var(--accent-2); }
+  .ai-settings-card{ margin-top:6px; flex-shrink:0; }
+  .ai-settings-row{ display:flex; gap:8px; align-items:center; margin-top:8px; flex-wrap:wrap;}
+  .ai-test-btn{
+    background:none;
+    border:none;
+    color:var(--accent-2);
+    font-size:0.78rem;
+    cursor:pointer;
+    padding:2px 6px;
+    margin-left:auto;
+  }
+  .ai-test-btn:hover{ text-decoration:underline; }
+  .ai-empty{
+    flex:1;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    color:var(--text-dim);
+    font-size:0.9rem;
+    text-align:center;
+    padding:40px 16px;
+  }
+  .chesscom-modal{
+    position:fixed;
+    inset:0;
+    background:rgba(0,0,0,0.6);
+    z-index:120;
+    display:none;
+    align-items:center;
+    justify-content:center;
+    padding:20px;
+  }
+  .chesscom-modal.open{ display:flex; }
+  .chesscom-card{
+    background:var(--panel-bg);
+    border-radius:10px;
+    padding:20px;
+    width:min(400px,92vw);
+    max-height:90vh;
+    overflow-y:auto;
+    box-shadow:var(--shadow);
+  }
+  .chesscom-card h3{ margin:0 0 12px; font-size:1.1rem;}
+  .chesscom-card p{ font-size:0.82rem; color:var(--text-dim); margin-bottom:12px;}
+  .chesscom-input-row{ display:flex; gap:8px; margin-bottom:12px;}
+  .chesscom-input{ flex:1; padding:10px 12px; border:1px solid var(--border); border-radius:8px; background:var(--bg); color:var(--text); font-family:inherit; font-size:0.88rem;}
+  .chesscom-game{ padding:10px 12px; border:1px solid var(--border); border-radius:8px; margin-bottom:8px; cursor:pointer; background:var(--bg);}
+  .chesscom-game:hover{ border-color:var(--accent-2);}
+  .chesscom-game-head{ display:flex; justify-content:space-between; font-size:0.85rem; color:var(--text-dim); margin-bottom:4px;}
+  .chesscom-game-body{ font-size:0.9rem; color:var(--text); }
+  .chesscom-game-result{ font-weight:700; }
 </style>
 </head>
 <body>
 
 <h1>♟ Chess Coach</h1>
 <p class="subtitle">Play a game, and tap <b>Get Hint</b> whenever you want a suggestion.</p>
+
+<button id="aiChatToggleBtn" class="ai-chat-toggle">🤖 AI Coach</button>
 
 <div class="mode-toggle">
   <button id="modePlayBtn" class="active">▶ Play</button>
@@ -453,6 +675,62 @@
   </div>
 </div>
 <p class="footer-note">Hints come from a small on-device engine — a helpful nudge, not a perfect oracle.</p>
+
+<div class="ai-chat-overlay" id="aiChatOverlay"></div>
+<div class="ai-chat-panel" id="aiChatPanel">
+  <div class="ai-chat-header">
+    <h2>🤖 AI Coach</h2>
+    <button class="ai-chat-close" id="aiChatSettingsToggle" aria-label="Settings">⚙️</button>
+    <button class="ai-chat-close" id="aiChatClose" aria-label="Close AI coach">×</button>
+  </div>
+  <div class="ai-settings-card card hidden" id="aiSettingsCard">
+    <label>AI provider</label>
+    <select id="aiProviderSelect">
+      <option value="openrouter">OpenRouter (openrouter/auto)</option>
+      <option value="openai">OpenAI-compatible</option>
+    </select>
+    <div class="ai-settings-row">
+      <input type="password" id="aiApiKey" placeholder="API key (stored locally)" style="flex:1; padding:8px 10px; border:1px solid var(--border); border-radius:8px; background:var(--bg); color:var(--text); font-family:inherit; font-size:0.85rem;">
+      <button class="ai-test-btn" id="aiTestBtn">Test</button>
+    </div>
+    <div class="ai-settings-row">
+      <input type="text" id="aiModelInput" placeholder="Model name (optional)" style="flex:1; padding:8px 10px; border:1px solid var(--border); border-radius:8px; background:var(--bg); color:var(--text); font-family:inherit; font-size:0.85rem;">
+    </div>
+    <p style="font-size:0.72rem; color:var(--text-dim); margin:8px 0 0;">Key is stored in your browser only and sent to the provider you choose. Never share it.</p>
+    <div class="row" style="margin-top:10px;">
+      <button id="aiSaveSettings" class="primary">Save</button>
+      <button id="aiSettingsToggle">Hide settings</button>
+    </div>
+  </div>
+  <div class="ai-chip-row hidden" id="aiChipRow">
+    <button class="ai-chip" data-ask="best">Best move</button>
+    <button class="ai-chip" data-ask="whybad">Why was my last move bad?</button>
+    <button class="ai-chip" data-ask="eval">Evaluate position</button>
+    <button class="ai-chip" data-ask="explain">Explain the last move</button>
+  </div>
+  <div class="ai-chat-messages" id="aiChatMessages">
+    <div class="ai-empty">Set up an AI provider to start coaching. Try "Best move" or ask anything.</div>
+  </div>
+  <div class="ai-input-area">
+    <textarea class="ai-input" id="aiChatInput" rows="1" placeholder="Ask the coach about this position…"></textarea>
+    <button class="ai-send" id="aiSendBtn" disabled>Send</button>
+  </div>
+</div>
+
+<div class="chesscom-modal" id="chesscomModal">
+  <div class="chesscom-card">
+    <h3>Load games from chess.com</h3>
+    <p>Enter your chess.com username to import recent games for analysis.</p>
+    <div class="chesscom-input-row">
+      <input class="chesscom-input" id="chesscomUsername" placeholder="Username">
+      <button class="primary" id="chesscomFetchBtn">Load</button>
+    </div>
+    <div id="chesscomList"></div>
+    <div class="row" style="margin-top:12px;">
+      <button id="chesscomClose">Close</button>
+    </div>
+  </div>
+</div>
 
 <div class="promo-overlay hidden" id="promoOverlay">
   <div class="promo-card" id="promoCard"></div>
@@ -1449,6 +1727,350 @@
   setBoardTheme(readStoredTheme());
   buildBoard();
   refresh();
+
+  // ---------- AI Coach ----------
+  (function initAiCoach(){
+    const AI_KEY_KEY = 'chess-coach.ai-key';
+    const AI_PROVIDER_KEY = 'chess-coach.ai-provider';
+    const AI_MODEL_KEY = 'chess-coach.ai-model';
+    const AI_MSG_KEY = 'chess-coach.ai-messages';
+
+    const aiState = { apiKey:'', provider:'openrouter', model:'', messages:[], isLoading:false };
+
+    const aiChatOverlay = document.getElementById('aiChatOverlay');
+    const aiChatPanel = document.getElementById('aiChatPanel');
+    const aiChatToggleBtn = document.getElementById('aiChatToggleBtn');
+    const aiChatClose = document.getElementById('aiChatClose');
+    const aiProviderSelect = document.getElementById('aiProviderSelect');
+    const aiApiKey = document.getElementById('aiApiKey');
+    const aiModelInput = document.getElementById('aiModelInput');
+    const aiTestBtn = document.getElementById('aiTestBtn');
+    const aiSaveSettings = document.getElementById('aiSaveSettings');
+    const aiSettingsToggle = document.getElementById('aiSettingsToggle');
+    const aiSettingsCard = document.getElementById('aiSettingsCard');
+    const aiChipRow = document.getElementById('aiChipRow');
+    const aiChatMessages = document.getElementById('aiChatMessages');
+    const aiChatInput = document.getElementById('aiChatInput');
+    const aiSendBtn = document.getElementById('aiSendBtn');
+    const chesscomModal = document.getElementById('chesscomModal');
+    const chesscomUsername = document.getElementById('chesscomUsername');
+    const chesscomFetchBtn = document.getElementById('chesscomFetchBtn');
+    const chesscomClose = document.getElementById('chesscomClose');
+    const chesscomList = document.getElementById('chesscomList');
+
+    function loadAiSettings(){
+      try{
+        aiState.apiKey = localStorage.getItem(AI_KEY_KEY) || '';
+        aiState.provider = localStorage.getItem(AI_PROVIDER_KEY) || 'openrouter';
+        aiState.model = localStorage.getItem(AI_MODEL_KEY) || '';
+        aiProviderSelect.value = aiState.provider;
+        aiApiKey.value = aiState.apiKey;
+        aiModelInput.value = aiState.model;
+        const s = localStorage.getItem(AI_MSG_KEY);
+        if(s) aiState.messages = JSON.parse(s);
+      }catch(e){}
+    }
+
+    function saveAiSettings(){
+      try{
+        localStorage.setItem(AI_KEY_KEY, aiState.apiKey);
+        localStorage.setItem(AI_PROVIDER_KEY, aiState.provider);
+        localStorage.setItem(AI_MODEL_KEY, aiState.model);
+        localStorage.setItem(AI_MSG_KEY, JSON.stringify(aiState.messages));
+      }catch(e){}
+    }
+
+    function toggleAiChat(open){
+      if(open === undefined) open = !aiChatPanel.classList.contains('open');
+      if(open){
+        aiChatOverlay.style.display = 'block';
+        aiChatPanel.classList.add('open');
+        aiChipRow.classList.remove('hidden');
+        aiSettingsCard.classList.remove('hidden');
+        aiSendBtn.disabled = !aiState.apiKey;
+        aiChatInput.disabled = !aiState.apiKey;
+        renderAiMessages();
+      } else {
+        aiChatOverlay.style.display = 'none';
+        aiChatPanel.classList.remove('open');
+      }
+    }
+
+    function renderAiMessages(){
+      aiChatMessages.innerHTML = '';
+      if(aiState.messages.length === 0){
+        const empty = document.createElement('div');
+        empty.className = 'ai-empty';
+        empty.textContent = aiState.apiKey ? 'Ask anything about this position.' : 'Set up your AI provider first (click Settings).';
+        aiChatMessages.appendChild(empty);
+        return;
+      }
+      aiState.messages.forEach(msg => {
+        const div = document.createElement('div');
+        div.className = 'ai-message ' + msg.role;
+        const bubble = document.createElement('div');
+        bubble.className = 'ai-bubble';
+        bubble.innerHTML = parseMoveTokens(msg.content);
+        div.appendChild(bubble);
+        aiChatMessages.appendChild(div);
+      });
+      aiChatMessages.scrollTop = aiChatMessages.scrollHeight;
+    }
+
+    function parseMoveTokens(text){
+      // Wrap SAN-style move tokens [[Qxe5]] so they become clickable tokens
+      return text.replace(/\[\[([A-Za-z][a-h][1-8][a-h][1-8]?[qrbn]?)\]\]/g, '<span class="move-token" data-san="$1">$1</span>');
+    }
+
+    function buildContext(){
+      const hist = game.history({verbose: true}).map(m => m.san).join(', ');
+      const turn = game.turn() === 'w' ? 'White' : 'Black';
+      const fen = game.fen();
+      let note = '';
+      if(mode === 'puzzle' && currentPuzzle) note = 'Puzzle rating ' + currentPuzzle.rating + '. Expected moves: ' + (currentPuzzle.solution || []).join(', ') + '.';
+      return {fen, turn, hist: hist || 'none', note};
+    }
+
+    async function sendAiMessage(text){
+      if(!text.trim() || aiState.isLoading) return;
+      aiState.isLoading = true;
+      aiSendBtn.disabled = true;
+      aiState.messages.push({role:'user', content:text.trim(), time:new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})});
+      saveAiSettings();
+      renderAiMessages();
+      aiChatInput.value = '';
+
+      const ctx = buildContext();
+      const systemPrompt = `You are a chess coach analyzing a live board. Respond in plain English. Suggest moves with [[SAN]] format (e.g., [[Qxe5]]) so they can be clicked. Explain tactics, why moves are bad, best moves, and evaluations. Keep concise.`;
+
+      try{
+        const model = aiState.model || (aiState.provider === 'openrouter' ? 'openrouter/auto' : 'gpt-3.5-turbo');
+        const url = aiState.provider === 'openrouter'
+          ? 'https://openrouter.ai/api/v1/chat/completions'
+          : 'https://api.openai.com/v1/chat/completions';
+        const payload = {
+          model: model,
+          messages: [
+            {role:'system', content: systemPrompt + '\n\nPosition: ' + ctx.fen + '\nSide to move: ' + ctx.turn + '\nHistory: ' + ctx.hist + (ctx.note ? '\n' + ctx.note : '')},
+            ...aiState.messages.slice(-8).map(m => ({role: m.role === 'ai' ? 'assistant' : 'user', content: m.content}))
+          ],
+          temperature: 0.7,
+          max_tokens: 700
+        };
+        const resp = await fetch(url, {
+          method:'POST',
+          headers:{
+            'Content-Type':'application/json',
+            'Authorization':'Bearer ' + aiState.apiKey,
+            'HTTP-Referer': window.location.origin,
+            'X-Title':'Chess Coach'
+          },
+          body: JSON.stringify(payload)
+        });
+        if(!resp.ok) throw new Error('HTTP ' + resp.status);
+        const data = await resp.json();
+        const reply = (data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content) ? data.choices[0].message.content : 'No reply.';
+        aiState.messages.push({role:'ai', content: reply, time:new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})});
+        saveAiSettings();
+        renderAiMessages();
+      } catch(err){
+        aiState.messages.push({role:'ai', content: 'Error reaching AI: ' + (err.message || err), time:new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})});
+        saveAiSettings();
+        renderAiMessages();
+      } finally {
+        aiState.isLoading = false;
+        aiSendBtn.disabled = !aiState.apiKey || !aiChatInput.value.trim();
+      }
+    }
+
+    function parseAndApplyMove(moveStr){
+      if(!moveStr) return false;
+      // Try SAN directly
+      let result = game.move(moveStr);
+      if(!result){
+        // Try to find via verbose moves
+        const verbose = game.moves({verbose:true});
+        const match = verbose.find(m => m.san === moveStr || (m.from + m.to) === moveStr || (m.from + m.to + (m.promotion||'')) === moveStr);
+        if(match) result = game.move({from: match.from, to: match.to, promotion: match.promotion || 'q'});
+      }
+      if(result){
+        lastHint = null;
+        selected = null; legalTargets = [];
+        recordMove(result, game.fen());
+        refresh();
+        return true;
+      }
+      return false;
+    }
+
+    aiChatMessages.addEventListener('click', e => {
+      const token = e.target.closest('.move-token');
+      if(!token) return;
+      const san = token.getAttribute('data-san');
+      const ok = parseAndApplyMove(san);
+      if(ok){
+        // Add a brief confirmation to chat
+        aiState.messages.push({role:'ai', content: 'Move applied: <span style="font-family:ui-monospace; background:var(--accent-2); color:#fff; padding:2px 6px; border-radius:4px;">[' + san + ']</span> — try a follow-up.', time:new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})});
+        saveAiSettings();
+        renderAiMessages();
+      }
+    });
+
+    aiChatToggleBtn.addEventListener('click', () => toggleAiChat());
+    aiChatClose.addEventListener('click', () => toggleAiChat(false));
+    document.getElementById('aiChatSettingsToggle').addEventListener('click', () => {
+      aiSettingsCard.classList.toggle('hidden');
+    });
+    aiChatOverlay.addEventListener('click', () => toggleAiChat(false));
+
+    aiSendBtn.addEventListener('click', () => {
+      const text = aiChatInput.value.trim();
+      if(text) sendAiMessage(text);
+    });
+
+    aiChatInput.addEventListener('keydown', e => {
+      if(e.key === 'Enter' && !e.shiftKey){
+        e.preventDefault();
+        const text = aiChatInput.value.trim();
+        if(text) sendAiMessage(text);
+      }
+    });
+
+    aiChatInput.addEventListener('input', () => {
+      aiSendBtn.disabled = !aiState.apiKey || !aiChatInput.value.trim() || aiState.isLoading;
+    });
+
+    aiSaveSettings.addEventListener('click', () => {
+      aiState.apiKey = aiApiKey.value.trim();
+      aiState.provider = aiProviderSelect.value;
+      aiState.model = aiModelInput.value.trim();
+      saveAiSettings();
+      aiSendBtn.disabled = !aiState.apiKey || aiState.isLoading;
+      aiSettingsCard.classList.add('hidden');
+      if(aiState.apiKey && aiChatMessages.querySelector('.ai-empty')) renderAiMessages();
+    });
+
+    aiSettingsToggle.addEventListener('click', () => {
+      aiSettingsCard.classList.toggle('hidden');
+    });
+
+    aiTestBtn.addEventListener('click', async () => {
+      if(!aiState.apiKey) return;
+      aiTestBtn.textContent = 'Testing…';
+      aiTestBtn.disabled = true;
+      try{
+        const payload = {
+          model: aiState.model || (aiState.provider==='openrouter' ? 'openrouter/auto' : 'gpt-3.5-turbo'),
+          messages:[{role:'user', content:'Say hello in 3 words'}],
+          max_tokens:10
+        };
+        const resp = await fetch(aiState.provider==='openrouter' ? 'https://openrouter.ai/api/v1/chat/completions' : 'https://api.openai.com/v1/chat/completions', {
+          method:'POST',
+          headers:{ 'Content-Type':'application/json', 'Authorization':'Bearer '+aiState.apiKey },
+          body: JSON.stringify(payload)
+        });
+        if(resp.ok) addAiMessage('ai', 'Connection OK! Provider works.');
+        else addAiMessage('ai', 'Test failed: HTTP '+resp.status);
+      }catch(err){ addAiMessage('ai', 'Test error: '+(err.message||err)); }
+      finally { aiTestBtn.textContent = 'Test'; aiTestBtn.disabled = false; }
+    });
+
+    aiChipRow.addEventListener('click', e => {
+      const btn = e.target.closest('.ai-chip');
+      if(!btn) return;
+      const ask = btn.dataset.ask;
+      const last = game.history({verbose:true}).pop();
+      const prompts = {
+        best: 'What is the best next move?',
+        whybad: (last ? 'Why was ' + last.san + ' a bad move? Explain why.' : 'Analyze my last move. Was it good or bad and why?'),
+        eval: 'Evaluate this position. Who is better?',
+        explain: 'Explain the purpose of my last move (' + (last ? last.san : 'the previous move') + ').'
+      };
+      aiChatInput.value = prompts[ask];
+      aiSendBtn.disabled = !aiState.apiKey || aiState.isLoading;
+      sendAiMessage(prompts[ask]);
+    });
+
+    function addAiMessage(role, text){
+      aiState.messages.push({role, content:text.trim(), time:new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})});
+      saveAiSettings();
+      renderAiMessages();
+    }
+
+    // Chess.com import
+    chesscomFetchBtn.addEventListener('click', async () => {
+      const user = chesscomUsername.value.trim();
+      if(!user) return;
+      chesscomFetchBtn.disabled = true;
+      chesscomFetchBtn.textContent = 'Loading…';
+      chesscomList.innerHTML = '<p style="font-size:0.85rem;color:var(--text-dim)">Fetching games…</p>';
+      try{
+        const archivesResp = await fetch('https://api.chess.com/pub/player/'+encodeURIComponent(user)+'/games/archives');
+        if(!archivesResp.ok) throw new Error('Not found / API error');
+        const archives = await archivesResp.json();
+        const urls = (archives.archives || []).slice(-4).reverse();
+        const games = [];
+        for(const url of urls){
+          try{
+            const r = await fetch(url);
+            if(!r.ok) continue;
+            const d = await r.json();
+            if(d.games) for(const g of d.games) games.push({white:g.white?.username||'?', black:g.black?.username||'?', result:g.result||'?', pgn:g.pgn||'', url:g.url||''});
+          }catch(e){}
+        }
+        games.sort((a,b)=> (b.url||'').localeCompare(a.url||''));
+        renderChesscomGames(games.slice(0,8));
+      }catch(err){ chesscomList.innerHTML='<p style="font-size:0.85rem;color:var(--danger)">'+err.message+'</p>'; }
+      finally{ chesscomFetchBtn.disabled = false; chesscomFetchBtn.textContent = 'Load'; }
+    });
+
+    function renderChesscomGames(games){
+      chesscomList.innerHTML = '';
+      if(games.length===0){ chesscomList.innerHTML='<p style="font-size:0.85rem;color:var(--text-dim)">No recent games.</p>'; return; }
+      games.forEach(g => {
+        const div = document.createElement('div');
+        div.className = 'chesscom-game';
+        const resClass = g.result.includes('win') ? 'color:var(--accent-2)' : (g.result.includes('loss') ? 'color:var(--danger)' : '');
+        div.innerHTML = '<div class="chesscom-game-head"><span>'+g.white+' vs '+g.black+'</span><span class="chesscom-game-result" style="'+resClass+'">'+g.result+'</span></div><div class="chesscom-game-body">'+(g.pgn ? g.pgn.slice(0,180).replace(/\n/g,' ')+'…' : 'No PGN')+'</div>';
+        div.addEventListener('click', () => loadChesscomPGN(g.pgn));
+        chesscomList.appendChild(div);
+      });
+    }
+
+    async function loadChesscomPGN(pgnText){
+      try{
+        const src = new Chess();
+        if(!src.load_pgn(pgnText)) throw new Error('PGN parse error');
+        const moves = src.history({verbose:true});
+        game.reset();
+        posFens=[game.fen()]; posMoves=[]; viewIndex=0;
+        for(const m of moves){
+          const r = game.move({from:m.from, to:m.to, promotion:m.promotion||'q'});
+          if(r){ posMoves.push(r); posFens.push(game.fen()); }
+        }
+        viewIndex = posFens.length-1;
+        selected=null; legalTargets=[]; lastHint=null; cancelTacticAnalysis();
+        refresh();
+        chesscomModal.classList.remove('open');
+        addAiMessage('ai', 'Loaded chess.com game (' + moves.length + ' plies). Ask anything about this position.');
+      }catch(err){ addAiMessage('ai', 'Failed to load game: ' + (err.message||err)); }
+    }
+
+    chesscomClose.addEventListener('click', () => chesscomModal.classList.remove('open'));
+
+    // Open chess.com import from chat settings (add button in settings card via DOM)
+    const loadChessBtn = document.createElement('button');
+    loadChessBtn.textContent = 'Import chess.com game';
+    loadChessBtn.className = 'primary';
+    loadChessBtn.style.cssText = 'margin-top:6px; width:100%;';
+    loadChessBtn.addEventListener('click', () => chesscomModal.classList.add('open'));
+    aiSettingsCard.insertBefore(loadChessBtn, aiSettingsCard.querySelector('.row'));
+
+    loadAiSettings();
+    aiSendBtn.disabled = !aiState.apiKey;
+    aiChatInput.disabled = !aiState.apiKey;
+  })();
+
 })();
 </script>
 </body>
